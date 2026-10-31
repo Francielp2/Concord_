@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/server/auth";
 import { requireMember, requirePermission } from "@/lib/server/access";
 import { db } from "@/lib/server/db";
 import { dispatch, dispatchToUsers } from "@/lib/server/events";
+import { cleanupGuildAssets, guildAssetUrls } from "@/lib/server/guildAssets";
 import { ApiError, Errors, json, noContent, readJson, route } from "@/lib/server/http";
 import { Permissions } from "@/lib/server/permissions";
 import { serializeGuild, serializeRole, sid } from "@/lib/server/serialize";
@@ -30,7 +31,7 @@ export const GET = route<Params>(async (req, { params }) => {
   });
 });
 
-// PATCH /api/v1/guilds/{id} { name?, icon?, description?, system_channel_id?, owner_id? }
+// PATCH /api/v1/guilds/{id} { name?, icon?, banner?, accent_color?, description?, system_channel_id?, owner_id? }
 export const PATCH = route<Params>(async (req, { params }) => {
   const { user } = await requireAuth(req);
   const guildId = idParam((await params).guildId, Errors.unknownGuild);
@@ -39,12 +40,20 @@ export const PATCH = route<Params>(async (req, { params }) => {
 
   const form = new Form(await readJson(req));
   const name = form.optionalString("name", { min: 2, max: 100 });
-  const icon = form.optionalString("icon", { max: 512, pattern: /^https:\/\/\S+$/ });
+  const icon = form.optionalString("icon", { max: 1024, pattern: /^(https:\/\/\S+|\/api\/v1\/guild-assets\/\d+)$/ });
+  const banner = form.optionalString("banner", { max: 1024, pattern: /^(https:\/\/\S+|\/api\/v1\/guild-assets\/\d+)$/ });
+  const accentColor = form.isNull("accent_color") ? null : form.int("accent_color", { min: 0, max: 0xffffff });
   const description = form.optionalString("description", { max: 300 });
   const systemChannelId = form.snowflake("system_channel_id");
   const ownerId = form.snowflake("owner_id");
   form.done();
   if (name === null) throw Errors.badRequest("name cannot be null");
+
+  // Banner só de imagem enviada para este servidor; link de fora veria o IP de quem abre o app.
+  // Ícone por link continua valendo (já era aceito); caminho interno tem que ser deste servidor.
+  const own = banner || icon?.startsWith("/") ? await guildAssetUrls(guildId) : [];
+  if (banner && !own.includes(banner)) throw Errors.badRequest("banner must be an uploaded image");
+  if (icon?.startsWith("/") && !own.includes(icon)) throw Errors.badRequest("icon must be an uploaded image");
 
   if (systemChannelId) {
     const ch = await db.channel.findFirst({ where: { id: systemChannelId, guildId, type: 0 } });
@@ -61,11 +70,14 @@ export const PATCH = route<Params>(async (req, { params }) => {
     data: {
       ...(name ? { name } : {}),
       ...(icon !== undefined ? { icon } : {}),
+      ...(banner !== undefined ? { banner } : {}),
+      ...(accentColor !== undefined ? { accentColor } : {}),
       ...(description !== undefined ? { description } : {}),
       ...(systemChannelId !== undefined ? { systemChannelId } : {}),
       ...(ownerId ? { ownerId } : {}),
     },
   });
+  await cleanupGuildAssets(guild, [ctx.guild.icon, ctx.guild.banner]);
   await dispatch("GUILD_UPDATE", serializeGuild(guild), { guildId });
   return json(serializeGuild(guild));
 });

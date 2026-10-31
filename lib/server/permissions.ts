@@ -35,6 +35,8 @@ export const Permissions = {
   MANAGE_ROLES: bit(28),
   MANAGE_WEBHOOKS: bit(29),
   MANAGE_GUILD_EXPRESSIONS: bit(30),
+  USE_SOUNDBOARD: bit(42),
+  MANAGE_SOUNDBOARD: bit(43),
 } as const;
 
 const P = Permissions;
@@ -54,6 +56,7 @@ export const DEFAULT_EVERYONE_PERMISSIONS =
   P.CONNECT |
   P.SPEAK |
   P.USE_VAD |
+  P.USE_SOUNDBOARD |
   P.CHANGE_NICKNAME;
 
 export const DM_PERMISSIONS =

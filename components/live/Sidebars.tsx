@@ -9,7 +9,7 @@ import {
   LogOut,
   Megaphone,
   MessagesSquare,
-  PhoneOff,
+  MoreVertical,
   Plus,
   Search,
   Settings,
@@ -21,7 +21,9 @@ import {
 } from "lucide-react";
 import { displayName, dmName, isUnread, mentionCount, statusOf, useStore } from "@/lib/client/store";
 import { Perm, hasPerm, type ApiChannel, type ApiGuild } from "@/lib/client/types";
+import { personPrefs, useVoicePrefs } from "@/lib/client/voicePrefs";
 import { canOpenGuildSettings } from "./GuildSettings";
+import { PersonControls } from "./voice/PersonControls";
 import { UserAvatar } from "./ui";
 
 const shell = "flex w-60 shrink-0 flex-col bg-paper-2";
@@ -42,7 +44,7 @@ export function GuildSidebar({
   channelId: string | null;
   voiceChannelId: string | null;
   onSelect: (id: string) => void;
-  onVoice: (id: string | null) => void;
+  onVoice: (id: string) => void;
   onInvite: () => void;
   onCreateChannel: (parentId: string | null, type: 0 | 2 | 4) => void;
   onLeave: () => void;
@@ -52,6 +54,8 @@ export function GuildSidebar({
   const { state } = useStore();
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const [menu, setMenu] = useState(false);
+  const [voiceMenu, setVoiceMenu] = useState<string | null>(null);
+  const prefs = useVoicePrefs();
   const canManage = hasPerm(guild.permissions, Perm.MANAGE_CHANNELS);
   const isOwner = guild.owner_id === state.me?.id;
 
@@ -68,16 +72,21 @@ export function GuildSidebar({
     ...(loose.length ? [{ cat: null, items: loose }] : []),
     ...categories.map((cat) => ({ cat, items: sorted.filter((c) => c.parent_id === cat.id && c.type !== 4) })),
   ];
-  const voiceChannel = guild.channels.find((c) => c.id === voiceChannelId);
 
   const menuItem = "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-paper-2";
 
   return (
     <aside className={shell}>
-      <div className="relative">
+      <div className="relative shrink-0">
+        {guild.banner && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={guild.banner} alt="" className="h-24 w-full object-cover" data-guild-banner />
+        )}
         <button
           onClick={() => setMenu((v) => !v)}
-          className="flex h-12 w-full shrink-0 items-center justify-between border-b border-ink/15 px-4 font-display text-[15px] font-bold hover:bg-paper-3/60"
+          className={`flex h-12 w-full shrink-0 items-center justify-between border-b border-ink/15 px-4 font-display text-[15px] font-bold ${
+            guild.banner ? "absolute inset-x-0 top-12 bg-linear-to-t from-chrome/85 to-transparent text-on-chrome" : "hover:bg-paper-3/60"
+          }`}
         >
           <span className="truncate">{guild.name}</span>
           {menu ? <X size={18} /> : <ChevronDown size={18} />}
@@ -88,7 +97,7 @@ export function GuildSidebar({
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
-              className="absolute left-2 right-2 top-[52px] z-50 rounded-xl border border-ink bg-sheet p-1.5 shadow-hard"
+              className="absolute left-2 right-2 top-full z-50 mt-1 rounded-xl border border-ink bg-sheet p-1.5 shadow-hard"
               onClick={() => setMenu(false)}
             >
               <button className={`${menuItem} text-signal-ink`} onClick={onInvite}>
@@ -143,7 +152,7 @@ export function GuildSidebar({
                   </button>
                   {canManage && (
                     <button aria-label="Criar canal aqui" onClick={() => onCreateChannel(cat.id, 0)}>
-                      <Plus size={15} className="text-muted opacity-0 hover:text-ink group-hover:opacity-100" />
+                      <Plus size={15} className="text-muted hover:text-ink [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100" />
                     </button>
                   )}
                 </div>
@@ -154,6 +163,7 @@ export function GuildSidebar({
                   .map((ch) => {
                     const voice = ch.type === 2;
                     const active = !voice && ch.id === channelId;
+                    const inCall = voice && ch.id === voiceChannelId;
                     const unread = !voice && isUnread(state, ch);
                     const mentions = mentionCount(state, ch.id);
                     const Icon = voice ? Volume2 : ch.type === 5 ? Megaphone : Hash;
@@ -164,8 +174,10 @@ export function GuildSidebar({
                           onClick={() => (voice ? onVoice(ch.id) : onSelect(ch.id))}
                           className={`relative flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[15px] ${
                             active
-                              ? "bg-paper-3 font-semibold text-ink"
-                              : unread
+                              ? "bg-channel-active font-semibold text-ink"
+                              : inCall
+                                ? "font-semibold text-online hover:bg-paper-3/60"
+                                : unread
                                 ? "font-semibold text-ink hover:bg-paper-3/60"
                                 : "text-muted hover:bg-paper-3/60 hover:text-ink"
                           }`}
@@ -174,7 +186,7 @@ export function GuildSidebar({
                           <Icon size={18} className="shrink-0 opacity-70" />
                           <span className="truncate">{ch.name}</span>
                           {!!mentions && !active && (
-                            <span className="ml-auto rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-sheet">{mentions}</span>
+                            <span className="ml-auto rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-on-signal">{mentions}</span>
                           )}
                         </button>
                         {people.length > 0 && (
@@ -182,10 +194,26 @@ export function GuildSidebar({
                             {people.map((v) => {
                               const u = state.users[v.user_id];
                               return (
-                                <li key={v.user_id} className="flex items-center gap-2 rounded px-1 py-0.5 text-sm text-muted">
-                                  <UserAvatar user={u} size={22} />
-                                  <span className="truncate">{displayName(u)}</span>
-                                  {(v.self_mute || v.self_deaf) && <span className="ml-auto text-[10px] text-dnd">{v.self_deaf ? "surdo" : "mudo"}</span>}
+                                <li key={v.user_id}>
+                                  <div className="group/person flex items-center gap-2 rounded px-1 py-0.5 text-sm text-muted">
+                                    <UserAvatar user={u} size={22} />
+                                    <span className="truncate">{displayName(u)}</span>
+                                    {(v.mute || v.self_mute || v.self_deaf || personPrefs(prefs, v.user_id).muted) && (
+                                      <span className="ml-auto shrink-0 text-[10px] text-dnd">
+                                        {personPrefs(prefs, v.user_id).muted ? "silenciado" : v.mute ? "mod" : v.self_deaf ? "surdo" : "mudo"}
+                                      </span>
+                                    )}
+                                    {v.user_id !== state.me?.id && (
+                                      <button
+                                        aria-label={`Opções de voz de ${displayName(u)}`}
+                                        onClick={() => setVoiceMenu((m) => (m === v.user_id ? null : v.user_id))}
+                                        className="shrink-0 rounded p-0.5 hover:text-ink [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover/person:opacity-100 focus:opacity-100"
+                                      >
+                                        <MoreVertical size={14} />
+                                      </button>
+                                    )}
+                                  </div>
+                                  {voiceMenu === v.user_id && <PersonControls identity={v.user_id} guildId={guild.id} onClose={() => setVoiceMenu(null)} />}
                                 </li>
                               );
                             })}
@@ -200,7 +228,7 @@ export function GuildSidebar({
                                   <button
                                     onClick={() => onSelect(t.id)}
                                     className={`flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm ${
-                                      on ? "bg-paper-3 font-semibold text-ink" : isUnread(state, t) ? "font-semibold text-ink hover:bg-paper-3/60" : "text-muted hover:bg-paper-3/60 hover:text-ink"
+                                      on ? "bg-channel-active font-semibold text-ink" : isUnread(state, t) ? "font-semibold text-ink hover:bg-paper-3/60" : "text-muted hover:bg-paper-3/60 hover:text-ink"
                                     }`}
                                   >
                                     <MessagesSquare size={14} className="shrink-0 opacity-70" />
@@ -221,33 +249,6 @@ export function GuildSidebar({
 
         {!guild.channels.length && <p className="mt-6 px-2 text-center text-sm text-muted">Nenhum canal por aqui ainda.</p>}
       </div>
-
-      <AnimatePresence>
-        {voiceChannel && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            className="overflow-hidden border-t border-ink/15 bg-paper-3/40"
-          >
-            <div className="flex items-center justify-between px-3 py-2">
-              <span className="min-w-0 leading-tight">
-                <span className="block text-sm font-bold text-online">Voz conectada</span>
-                <span className="block truncate text-xs text-muted">
-                  {voiceChannel.name} / {guild.name}
-                </span>
-              </span>
-              <button
-                aria-label="Desconectar"
-                onClick={() => onVoice(null)}
-                className="flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:bg-paper-3 hover:text-dnd"
-              >
-                <PhoneOff size={18} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {footer}
     </aside>
@@ -296,7 +297,7 @@ export function HomeSidebar({
         >
           <Users size={20} />
           Amigos
-          {!!pending && <span className="ml-auto rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-sheet">{pending}</span>}
+          {!!pending && <span className="ml-auto rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-on-signal">{pending}</span>}
         </button>
 
         <div className="mt-4 flex items-center justify-between px-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-muted">
@@ -331,7 +332,7 @@ export function HomeSidebar({
                     {c.type === 3 && <span className="block truncate text-xs text-muted">{(c.recipients?.length ?? 0) + 1} pessoas</span>}
                   </span>
                   {!!mentions && !active && (
-                    <span className="rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-sheet">{mentions}</span>
+                    <span className="rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-on-signal">{mentions}</span>
                   )}
                 </button>
               </li>

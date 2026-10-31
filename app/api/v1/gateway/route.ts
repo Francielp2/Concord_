@@ -5,10 +5,14 @@ import { db } from "@/lib/server/db";
 import { dispatch } from "@/lib/server/events";
 import { HEARTBEAT_INTERVAL_MS, Op } from "@/lib/server/gateway";
 import { ApiError, Errors, json, readJson, route } from "@/lib/server/http";
+import { maybeSweepVoice } from "@/lib/server/maintenance";
 import { Permissions, has } from "@/lib/server/permissions";
 import { PRESENCE_STATUSES, setPresenceStatus, touchPresence } from "@/lib/server/presence";
 import { serializePresence, serializeVoiceState } from "@/lib/server/serialize";
 import { Form } from "@/lib/server/validate";
+import { removeVoiceState } from "@/lib/server/voice";
+
+const SESSION_ID = /^[A-Za-z0-9_-]{8,64}$/;
 
 // GET /api/v1/gateway: onde conectar (equivalente ao GET /gateway do Discord)
 export const GET = route(async () =>
@@ -27,6 +31,15 @@ export const POST = route(async (req) => {
 
   switch (body.op) {
     case Op.HEARTBEAT: {
+      // heartbeat de voz: vem só do dispositivo que está na chamada
+      if (typeof d.voice_session_id === "string") {
+        const { count } = await db.voiceState.updateMany({
+          where: { userId: user.id, sessionId: d.voice_session_id },
+          data: { lastSeenAt: new Date() },
+        });
+        await maybeSweepVoice();
+        return json({ op: Op.HEARTBEAT_ACK, d: { voice: count > 0 } });
+      }
       await touchPresence(user.id);
       return json({ op: Op.HEARTBEAT_ACK, d: null });
     }
@@ -46,15 +59,14 @@ export const POST = route(async (req) => {
       const channelId = form.snowflake("channel_id");
       const selfMute = form.bool("self_mute") ?? false;
       const selfDeaf = form.bool("self_deaf") ?? false;
+      const sessionId = form.optionalString("session_id", { pattern: SESSION_ID });
       form.done();
 
       const previous = await db.voiceState.findUnique({ where: { userId: user.id } });
 
       if (channelId == null) {
-        if (!previous) return json({ op: Op.DISPATCH, t: "VOICE_STATE_UPDATE", d: null });
-        await db.voiceState.delete({ where: { userId: user.id } });
-        const payload = { ...serializeVoiceState(previous), channel_id: null };
-        await dispatch("VOICE_STATE_UPDATE", payload, { guildId: previous.guildId });
+        // com session_id, sair só vale para esse dispositivo: o antigo fechando a aba não derruba o novo
+        const payload = await removeVoiceState({ userId: user.id, ...(sessionId ? { sessionId } : {}) });
         return json({ op: Op.DISPATCH, t: "VOICE_STATE_UPDATE", d: payload });
       }
 
@@ -76,17 +88,13 @@ export const POST = route(async (req) => {
         await dispatch("VOICE_STATE_UPDATE", { ...serializeVoiceState(previous), channel_id: null }, { guildId: previous.guildId });
       }
 
+      // o último dispositivo a entrar vence: a sessão dele substitui a anterior
+      const session = sessionId ?? previous?.sessionId ?? randomBytes(16).toString("hex");
+      const lastSeenAt = new Date();
       const state = await db.voiceState.upsert({
         where: { userId: user.id },
-        create: {
-          userId: user.id,
-          guildId: ctx.channel.guildId,
-          channelId,
-          selfMute,
-          selfDeaf,
-          sessionId: randomBytes(16).toString("hex"),
-        },
-        update: { guildId: ctx.channel.guildId, channelId, selfMute, selfDeaf },
+        create: { userId: user.id, guildId: ctx.channel.guildId, channelId, selfMute, selfDeaf, sessionId: session, lastSeenAt },
+        update: { guildId: ctx.channel.guildId, channelId, selfMute, selfDeaf, sessionId: session, lastSeenAt },
       });
       const payload = serializeVoiceState(state);
       await dispatch("VOICE_STATE_UPDATE", payload, { guildId: state.guildId });

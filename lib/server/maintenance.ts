@@ -1,33 +1,44 @@
 import { db } from "./db";
-import { dispatch } from "./events";
 import { PRESENCE_TIMEOUT_MS, broadcastPresence } from "./presence";
-import { serializeVoiceState } from "./serialize";
 import { removeFiles } from "./storage";
+import { sweepVoice } from "./voice";
 
 const SWEEP_INTERVAL_MS = 30_000;
+export const VOICE_SWEEP_INTERVAL_MS = 10_000;
 const EVENT_RETENTION_MS = 24 * 60 * 60 * 1000;
 const ORPHAN_ATTACHMENT_MS = 60 * 60 * 1000;
 
 // Na Vercel não existe processo de fundo. Quem estiver com o gateway aberto
-// tenta pegar esta trava a cada 30s; só um consegue e faz a varredura.
+// tenta pegar esta trava periodicamente; só um consegue e faz a varredura.
+async function acquireLock(key: string, intervalMs: number, now: Date) {
+  const acquired = await db.systemLock.updateMany({
+    where: { key, at: { lt: new Date(now.getTime() - intervalMs) } },
+    data: { at: now },
+  });
+  if (acquired.count > 0) return true;
+  const exists = await db.systemLock.findUnique({ where: { key } });
+  if (exists) return false;
+  try {
+    await db.systemLock.create({ data: { key, at: now } });
+    return true;
+  } catch {
+    return false; // outro processo criou ao mesmo tempo
+  }
+}
+
 export async function maybeSweep(force = false) {
   const now = new Date();
-  if (!force) {
-    const acquired = await db.systemLock.updateMany({
-      where: { key: "sweep", at: { lt: new Date(now.getTime() - SWEEP_INTERVAL_MS) } },
-      data: { at: now },
-    });
-    if (acquired.count === 0) {
-      const exists = await db.systemLock.findUnique({ where: { key: "sweep" } });
-      if (exists) return false;
-      try {
-        await db.systemLock.create({ data: { key: "sweep", at: now } });
-      } catch {
-        return false; // outro processo criou ao mesmo tempo
-      }
-    }
-  }
+  if (!force && !(await acquireLock("sweep", SWEEP_INTERVAL_MS, now))) return false;
   await sweep(now);
+  return true;
+}
+
+// Trava própria e bem mais frequente: com a varredura geral de 30s,
+// o timeout de voz não faria diferença.
+export async function maybeSweepVoice() {
+  const now = new Date();
+  if (!(await acquireLock("voice-sweep", VOICE_SWEEP_INTERVAL_MS, now))) return false;
+  await sweepVoice(now);
   return true;
 }
 
@@ -46,17 +57,11 @@ async function sweep(now: Date) {
       where: { userId: { in: ids }, lastSeenAt: { lt: staleBefore } },
       data: { online: false },
     });
-
-    // 2. E sai do canal de voz
-    const voice = await db.voiceState.findMany({ where: { userId: { in: ids } } });
-    if (voice.length) {
-      await db.voiceState.deleteMany({ where: { userId: { in: voice.map((v) => v.userId) } } });
-      for (const v of voice) {
-        await dispatch("VOICE_STATE_UPDATE", { ...serializeVoiceState(v), channel_id: null }, { guildId: v.guildId });
-      }
-    }
     for (const id of ids) await broadcastPresence(id);
   }
+
+  // 2. Voz fantasma (por dispositivo, independente da presença)
+  await sweepVoice(now);
 
   // 3. Limpa a fila de eventos antiga (RESUME além disso vira INVALID_SESSION)
   await db.gatewayEvent.deleteMany({ where: { createdAt: { lt: new Date(now.getTime() - EVENT_RETENTION_MS) } } });

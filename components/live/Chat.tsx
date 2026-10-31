@@ -73,7 +73,8 @@ export function Chat({
   // carrega o histórico na primeira vez
   useEffect(() => {
     if (!list?.loaded) loadMessages(channel.id).catch((e) => setError(e.message));
-    inputRef.current?.focus({ preventScroll: true });
+    // focar sozinho no celular abriria o teclado a cada troca de canal
+    if (window.matchMedia("(pointer: fine)").matches) inputRef.current?.focus({ preventScroll: true });
   }, [channel.id, list?.loaded, loadMessages]);
 
   // mantém a rolagem: no fim quando chega mensagem, ou no lugar quando carrega antigas
@@ -351,7 +352,7 @@ export function Chat({
         </div>
       </div>
 
-      <div className="shrink-0 px-4 pb-5">
+      <div className="shrink-0 px-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] sm:px-4">
         <AnimatePresence>
           {replying && (
             <motion.div
@@ -411,7 +412,7 @@ export function Chat({
                 }
               }}
               placeholder={isDm ? `Conversar com ${title}` : `Conversar em #${title}`}
-              className="max-h-40 min-h-8 flex-1 resize-none bg-transparent py-1.5 text-[15px] outline-none placeholder:text-faint"
+              className="max-h-40 min-h-8 min-w-0 flex-1 resize-none bg-transparent py-1.5 text-base outline-none placeholder:text-faint md:text-[15px]"
             />
             <div className="relative">
               <button className={iconBtn} aria-label="Emoji" onClick={() => setPicker((p) => (p === "composer" ? null : "composer"))}>
@@ -584,12 +585,12 @@ function Row({
 
   return (
     <div
-      className={`group relative px-4 hover:bg-paper/70 ${grouped ? "py-0.5" : "mt-3 pb-0.5 pt-1"} ${
-        mentionsMe ? "border-l-2 border-mustard bg-mustard/10" : ""
+      className={`group relative px-2 hover:bg-paper/70 sm:px-4 ${grouped ? "py-0.5" : "mt-3 pb-0.5 pt-1"} ${
+        mentionsMe ? "border-l-2 border-mention bg-mention/10" : ""
       } ${m.pending ? "opacity-60" : ""}`}
     >
       {m.message_reference && (
-        <div className="mb-1 flex items-center gap-1.5 pl-14 text-[13px] text-muted">
+        <div className="mb-1 flex items-center gap-1.5 pl-[3.25rem] text-[13px] text-muted sm:pl-14">
           {ref ? (
             <>
               <UserAvatar user={state.users[ref.author.id] ?? ref.author} size={16} />
@@ -601,7 +602,7 @@ function Row({
           )}
         </div>
       )}
-      <div className="flex gap-4">
+      <div className="flex gap-2.5 sm:gap-4">
         <div className="w-10 shrink-0">
           {grouped ? (
             <span className="hidden pt-1 text-right font-mono text-[10px] text-faint group-hover:block">{formatTime(m.timestamp)}</span>
@@ -676,7 +677,7 @@ function Row({
 
       {!m.pending && !m.failed && !editing && (
         <div
-          className={`absolute -top-4 right-4 items-center rounded-md border border-ink bg-sheet shadow-hard-sm ${
+          className={`absolute -top-4 right-2 z-10 items-center rounded-md border border-ink bg-sheet shadow-hard-sm sm:right-4 ${
             picker ? "flex" : "hidden group-hover:flex"
           }`}
         >
@@ -739,7 +740,7 @@ function EditBox({ m, channelId, onDone }: { m: ApiMessage; channelId: string; o
           }
           if (e.key === "Escape") onDone();
         }}
-        className="w-full resize-none rounded-lg border border-ink bg-paper px-3 py-2 text-[15px] outline-none"
+        className="w-full resize-none rounded-lg border border-ink bg-paper px-3 py-2 text-base outline-none md:text-[15px]"
         rows={Math.min(6, value.split("\n").length)}
       />
       <p className="text-xs text-muted">

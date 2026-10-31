@@ -46,6 +46,8 @@ export function serializeGuild(guild: Guild) {
     name: guild.name,
     icon: guild.icon,
     description: guild.description,
+    banner: guild.banner,
+    accent_color: guild.accentColor,
     owner_id: sid(guild.ownerId),
     system_channel_id: sid(guild.systemChannelId),
     created_at: iso(guild.createdAt),
@@ -166,6 +168,7 @@ export function serializeVoiceState(vs: VoiceState) {
     session_id: vs.sessionId,
     self_mute: vs.selfMute,
     self_deaf: vs.selfDeaf,
+    mute: vs.serverMute,
   };
 }
 

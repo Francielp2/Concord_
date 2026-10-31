@@ -1,4 +1,4 @@
-import type { Channel, Emoji, Guild, Member, MemberRole, PermissionOverwrite, Role, VoiceState } from "@prisma/client";
+import type { Channel, Emoji, Guild, Member, MemberRole, PermissionOverwrite, Role, Sound, VoiceState } from "@prisma/client";
 import { db } from "./db";
 import { dispatch, dispatchToUsers } from "./events";
 import { Permissions, computeBasePermissions, computeChannelPermissions, has } from "./permissions";
@@ -16,6 +16,7 @@ type GuildRow = Guild & {
   channels: (Channel & { overwrites: PermissionOverwrite[] })[];
   voiceStates: VoiceState[];
   emojis: Omit<Emoji, "data">[];
+  sounds: Omit<Sound, "data">[];
   _count: { members: number };
 };
 
@@ -38,11 +39,27 @@ export function serializeEmoji(e: Omit<Emoji, "data">) {
   return { id: sid(e.id), name: e.name, animated: e.animated, available: true, url: emojiUrl(e) };
 }
 
+export const soundSelect = {
+  id: true,
+  guildId: true,
+  name: true,
+  creatorId: true,
+  contentType: true,
+  durationMs: true,
+  url: true,
+  createdAt: true,
+} as const;
+
+export function serializeSound(s: Omit<Sound, "data">) {
+  return { id: sid(s.id), name: s.name, duration_ms: s.durationMs, url: s.url ?? `/api/v1/sounds/${s.id}` };
+}
+
 export const guildInclude = {
   roles: true,
   channels: { include: { overwrites: true } },
   voiceStates: true,
   emojis: { select: emojiSelect, orderBy: { name: "asc" } },
+  sounds: { select: soundSelect, orderBy: { name: "asc" } },
   _count: { select: { members: true } },
 } as const;
 
@@ -81,6 +98,7 @@ export function guildPayload(guild: GuildRow, member: Member & { roles: MemberRo
     members: [serializeMember(member)],
     voice_states: guild.voiceStates.map(serializeVoiceState),
     emojis: guild.emojis.map(serializeEmoji),
+    sounds: guild.sounds.map(serializeSound),
   };
 }
 

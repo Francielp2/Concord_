@@ -102,7 +102,7 @@ export function Modal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-ink/60 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-scrim/60 p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -115,7 +115,7 @@ export function Modal({
             initial={{ y: 16, scale: 0.98 }}
             animate={{ y: 0, scale: 1 }}
             exit={{ y: 16, scale: 0.98 }}
-            className="scroll-thin max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-ink bg-sheet p-6 text-ink shadow-hard"
+            className="scroll-thin max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-ink bg-sheet p-4 text-ink shadow-hard sm:p-6"
           >
             <div className="flex items-start justify-between gap-4">
               <h2 className="font-display text-2xl font-extrabold">{title}</h2>
@@ -144,7 +144,7 @@ export function Field({
       </span>
       <input
         {...props}
-        className={`mt-1.5 w-full rounded-lg border bg-paper px-3 py-2.5 text-[15px] outline-none focus:shadow-hard-sm ${
+        className={`mt-1.5 w-full rounded-lg border bg-paper px-3 py-2.5 text-base outline-none focus:shadow-hard-sm md:text-[15px] ${
           error ? "border-dnd" : "border-ink"
         }`}
       />
@@ -157,7 +157,7 @@ export function PrimaryButton({ busy, children, ...props }: React.ButtonHTMLAttr
     <button
       {...props}
       disabled={busy || props.disabled}
-      className={`rounded-full border border-ink bg-signal px-5 py-2.5 font-semibold text-sheet shadow-hard-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none disabled:opacity-50 ${
+      className={`rounded-full border border-ink bg-signal px-5 py-2.5 font-semibold text-on-signal shadow-hard-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none disabled:opacity-50 ${
         props.className ?? ""
       }`}
     >

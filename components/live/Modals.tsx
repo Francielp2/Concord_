@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Copy, Hash, Volume2, FolderClosed } from "lucide-react";
+import { Check, Copy, Hash, PlusSquare, Share, Volume2, FolderClosed } from "lucide-react";
 import { api, type ClientError } from "@/lib/client/api";
 import { displayName, useStore } from "@/lib/client/store";
+import { setBlackBackground, useBlackBackground } from "@/lib/client/theme";
 import { Rel, type ApiChannel, type ApiGuild, type ApiInvite, type ApiUser } from "@/lib/client/types";
 import { GuildSettingsTabs } from "./GuildSettings";
 import { Field, GhostButton, Modal, PrimaryButton, UserAvatar } from "./ui";
@@ -124,7 +125,7 @@ function InviteBody({ guild, channelId }: { guild: ApiGuild; channelId: string |
         <button
           disabled={!link}
           onClick={copy}
-          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold text-sheet ${copied ? "bg-online" : "bg-signal"} disabled:opacity-40`}
+          className={`flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-semibold ${copied ? "bg-online text-sheet" : "bg-signal text-on-signal"} disabled:opacity-40`}
         >
           {copied ? <Check size={15} /> : <Copy size={15} />}
           {copied ? "Copiado" : "Copiar"}
@@ -278,7 +279,7 @@ function NewDmBody({ onClose, onOpen }: NewDmProps) {
               >
                 <UserAvatar user={u} size={32} />
                 <span className="flex-1 truncate font-medium">{displayName(u)}</span>
-                <span className={`flex h-5 w-5 items-center justify-center rounded border border-ink ${on ? "bg-signal text-sheet" : ""}`}>
+                <span className={`flex h-5 w-5 items-center justify-center rounded border border-ink ${on ? "bg-signal text-on-signal" : ""}`}>
                   {on && <Check size={13} />}
                 </span>
               </button>
@@ -303,6 +304,27 @@ export function ProfileModal({ open, onClose }: { open: boolean; onClose: () => 
     <Modal open={open} onClose={onClose} title="Seu perfil">
       <ProfileBody onClose={onClose} />
     </Modal>
+  );
+}
+
+function BlackBackgroundToggle() {
+  const on = useBlackBackground();
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={() => setBlackBackground(!on)}
+      className="flex w-full items-center justify-between gap-3 rounded-lg border border-ink/20 px-3 py-2 text-left"
+    >
+      <span className="leading-tight">
+        <b className="block text-sm">Fundo preto</b>
+        <span className="text-xs text-muted">Preto puro no app inteiro. Vale só neste aparelho.</span>
+      </span>
+      <span className={`relative h-6 w-10 shrink-0 rounded-full border border-ink ${on ? "bg-signal" : "bg-paper-3"}`}>
+        <span className={`absolute top-0.5 h-[18px] w-[18px] rounded-full bg-ink transition-[left] ${on ? "left-[18px]" : "left-0.5"}`} />
+      </span>
+    </button>
   );
 }
 
@@ -359,6 +381,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
         <Field label="Nome que aparece" value={values.global_name} onChange={set("global_name")} maxLength={32} error={errors.global_name} />
         <Field label="Sobre você" value={values.bio} onChange={set("bio")} maxLength={190} error={errors.bio} />
         <Field label="Foto (link https)" value={values.avatar} onChange={set("avatar")} placeholder="https://" error={errors.avatar} />
+        <BlackBackgroundToggle />
         <details className="rounded-lg border border-ink/20 px-3 py-2">
           <summary className="cursor-pointer text-sm font-semibold">Trocar senha</summary>
           <div className="mt-3 space-y-3">
@@ -375,6 +398,31 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
         </div>
       </form>
     </>
+  );
+}
+
+export function InstallHelpModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  return (
+    <Modal open={open} onClose={onClose} title="Instalar no iPhone">
+      <p className="text-sm text-ink-3">No iPhone e no iPad a instalação é feita pelo próprio navegador:</p>
+      <ol className="mt-3 space-y-3 text-[15px]">
+        <li className="flex items-center gap-3">
+          <Share size={20} className="shrink-0 text-muted" />
+          <span>
+            Toca em <b>Compartilhar</b> na barra do navegador.
+          </span>
+        </li>
+        <li className="flex items-center gap-3">
+          <PlusSquare size={20} className="shrink-0 text-muted" />
+          <span>
+            Escolhe <b>Adicionar à Tela de Início</b>.
+          </span>
+        </li>
+      </ol>
+      <div className="mt-5 flex justify-end">
+        <GhostButton onClick={onClose}>Entendi</GhostButton>
+      </div>
+    </Modal>
   );
 }
 

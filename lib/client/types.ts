@@ -48,15 +48,20 @@ export type ApiVoiceState = {
   session_id: string;
   self_mute: boolean;
   self_deaf: boolean;
+  mute?: boolean; // silenciado por um moderador
 };
 
 export type ApiEmoji = { id: string; name: string; animated: boolean; url: string };
+
+export type ApiSound = { id: string; name: string; duration_ms: number; url: string };
 
 export type ApiGuild = {
   id: string;
   name: string;
   icon: string | null;
   description: string | null;
+  banner?: string | null;
+  accent_color?: number | null;
   owner_id: string;
   system_channel_id: string | null;
   permissions: string;
@@ -66,6 +71,7 @@ export type ApiGuild = {
   members: ApiMember[];
   voice_states: ApiVoiceState[];
   emojis?: ApiEmoji[];
+  sounds?: ApiSound[];
 };
 
 export type ApiReaction = { emoji: { id: null; name: string }; count: number; me: boolean };
@@ -145,6 +151,9 @@ export const Perm = {
   MANAGE_WEBHOOKS: BigInt(1) << BigInt(29),
   MANAGE_GUILD_EXPRESSIONS: BigInt(1) << BigInt(30),
   ATTACH_FILES: BigInt(1) << BigInt(15),
+  MUTE_MEMBERS: BigInt(1) << BigInt(22),
+  USE_SOUNDBOARD: BigInt(1) << BigInt(42),
+  MANAGE_SOUNDBOARD: BigInt(1) << BigInt(43),
 } as const;
 
 export function hasPerm(perms: string | undefined, flag: bigint) {

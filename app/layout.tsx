@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Instrument_Serif, JetBrains_Mono, Inter_Tight } from "next/font/google";
 import "./globals.css";
 
@@ -28,6 +28,14 @@ const mono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Concord",
   description: "Servidores, canais, voz e conversa direta pro seu grupo.",
+  appleWebApp: { capable: true, title: "Concord", statusBarStyle: "black-translucent" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#191714",
+  viewportFit: "cover",
+  // o teclado do celular encolhe a página, e o campo de mensagem fica acima dele
+  interactiveWidget: "resizes-content",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

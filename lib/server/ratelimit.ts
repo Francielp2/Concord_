@@ -45,6 +45,7 @@ export const Limits = {
   guildCreate: [10, 3600],
   webhookExecute: [30, 60],
   emojiCreate: [20, 3600],
+  soundCreate: [20, 3600],
   threadCreate: [10, 600],
 } as const satisfies Record<string, readonly [number, number]>;
 

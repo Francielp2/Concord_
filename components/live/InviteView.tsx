@@ -93,7 +93,7 @@ export function InviteView() {
               <button
                 onClick={accept}
                 disabled={busy}
-                className="mt-6 w-full rounded-full border border-ink bg-signal px-6 py-3.5 font-semibold text-sheet shadow-hard transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-hard-sm disabled:opacity-60"
+                className="mt-6 w-full rounded-full border border-ink bg-signal px-6 py-3.5 font-semibold text-on-signal shadow-hard transition-all hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-hard-sm disabled:opacity-60"
               >
                 {busy ? "Entrando…" : "Aceitar convite"}
               </button>

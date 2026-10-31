@@ -1,11 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
 import { api } from "@/lib/client/api";
+import { registerServiceWorker } from "@/lib/client/install";
 import { StoreProvider, useStore } from "@/lib/client/store";
+import { unlockAudio } from "@/lib/client/sounds";
+import { accentVars, useBlackBackground } from "@/lib/client/theme";
 import type { ApiChannel, ApiGuild } from "@/lib/client/types";
+import { voiceSessionId } from "@/lib/client/voice";
 import { Chat } from "./Chat";
 import { Friends } from "./Friends";
 import { Members } from "./Members";
@@ -14,6 +18,7 @@ import {
   ConfirmModal,
   CreateChannelModal,
   GuildSettingsModal,
+  InstallHelpModal,
   InviteModal,
   NewDmModal,
   ProfileModal,
@@ -21,9 +26,10 @@ import {
 import { Rail } from "./Rail";
 import { GuildSidebar, HomeSidebar } from "./Sidebars";
 import { UserBar } from "./UserBar";
-import { VoicePanel } from "./Voice";
+import { VoicePanel } from "./voice/VoicePanel";
 
 const NAV_KEY = "concord:nav";
+const VOICE_HEARTBEAT_MS = 10_000;
 
 type Nav = { place: string; channelByGuild: Record<string, string>; dm: string | null };
 
@@ -58,6 +64,8 @@ function Shell() {
   });
   const [drawer, setDrawer] = useState(false);
   const [membersOpen, setMembersOpen] = useState(true);
+  const [membersDrawer, setMembersDrawer] = useState(false);
+  const [installHelp, setInstallHelp] = useState(false);
   const [addGuild, setAddGuild] = useState(false);
   const [newDm, setNewDm] = useState(false);
   const [profile, setProfile] = useState(false);
@@ -66,11 +74,25 @@ function Shell() {
   const [leave, setLeave] = useState<ApiGuild | null>(null);
   const [createChannel, setCreateChannel] = useState<{ guild: ApiGuild; parentId: string | null; type: 0 | 2 | 4 } | null>(null);
   const [voiceSlot, setVoiceSlot] = useState<HTMLDivElement | null>(null);
+  const [voiceBar, setVoiceBar] = useState<HTMLDivElement | null>(null);
+  const [voiceFocus, setVoiceFocus] = useState(0);
+  const [voiceKicked, setVoiceKicked] = useState(false);
+  const [sessionId] = useState(voiceSessionId);
+  const black = useBlackBackground();
+  // no <html> também, para a rolagem elástica não mostrar o fundo claro nas pontas
+  useEffect(() => {
+    if (!black) return;
+    document.documentElement.dataset.theme = "black";
+    return () => {
+      delete document.documentElement.dataset.theme;
+    };
+  }, [black]);
   const [muted, setMuted] = useState(false);
   const [deaf, setDeaf] = useState(false);
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has("guild")) window.history.replaceState(null, "", "/app");
+    registerServiceWorker();
   }, []);
 
   useEffect(() => {
@@ -108,10 +130,40 @@ function Shell() {
     return null;
   }, [state.guilds, state.me?.id]);
 
+  // a chamada só é "minha" neste dispositivo se a sessão gravada for a dele;
+  // senão a conta está em chamada em outro lugar e aqui não conecta nada
+  const ownVoice = myVoice?.session_id === sessionId && !voiceKicked ? myVoice : null;
+  const elsewhere = myVoice && !ownVoice ? myVoice : null;
+
+  const hadOwnVoice = useRef(false);
+  useEffect(() => {
+    /* eslint-disable react-hooks/set-state-in-effect -- reação a um evento do gateway */
+    if (!myVoice) setVoiceKicked(false);
+    else if (hadOwnVoice.current && myVoice.session_id !== sessionId) setVoiceKicked(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    hadOwnVoice.current = !!ownVoice;
+  }, [myVoice, ownVoice, sessionId]);
+
+  // heartbeat de voz: é por ele que a varredura sabe que este dispositivo continua na chamada
+  const inOwnVoice = !!ownVoice;
+  useEffect(() => {
+    if (!inOwnVoice) return;
+    const beat = () => gatewaySend(1, { voice_session_id: sessionId }).catch(() => {});
+    const timer = setInterval(beat, VOICE_HEARTBEAT_MS);
+    return () => clearInterval(timer);
+  }, [inOwnVoice, sessionId, gatewaySend]);
+
   const go = (patch: Partial<Nav>) => {
     setNav((n) => ({ ...n, ...patch }));
     setDrawer(false);
+    setMembersDrawer(false);
   };
+
+  // abaixo de lg a lista de membros não cabe do lado do chat: abre em gaveta
+  function toggleMembers() {
+    if (window.matchMedia("(min-width: 1024px)").matches) setMembersOpen((v) => !v);
+    else setMembersDrawer((v) => !v);
+  }
 
   async function openDmWith(userId: string) {
     const existing = Object.values(state.dms).find((c) => c.type === 1 && c.recipients?.[0]?.id === userId);
@@ -121,33 +173,52 @@ function Shell() {
     go({ place: "home", dm: c.id });
   }
 
-  async function setVoice(channelId: string | null, opts: { mute?: boolean; deaf?: boolean } = {}) {
-    const g = channelId ? Object.values(state.guilds).find((x) => x.channels.some((c) => c.id === channelId)) : undefined;
+  async function setVoice(channelId: string, opts: { mute?: boolean; deaf?: boolean } = {}) {
+    const g = Object.values(state.guilds).find((x) => x.channels.some((c) => c.id === channelId));
+    setVoiceKicked(false);
     await gatewaySend(4, {
-      guild_id: g?.id ?? myVoice?.guild_id ?? null,
+      guild_id: g?.id ?? null,
       channel_id: channelId,
       self_mute: opts.mute ?? muted,
       self_deaf: opts.deaf ?? deaf,
+      session_id: sessionId,
     }).catch(() => {});
+  }
+
+  // Sempre funciona, com a mídia de pé ou não. A interface sai na hora; se o pedido falhar,
+  // o heartbeat já parou e a varredura termina o serviço.
+  function leaveVoice() {
+    if (!myVoice) return;
+    dispatch({ type: "EVENT", t: "VOICE_STATE_UPDATE", d: { ...myVoice, channel_id: null } });
+    // sem session_id ao desligar uma chamada que está em outro dispositivo
+    gatewaySend(4, { channel_id: null, ...(ownVoice ? { session_id: sessionId } : {}) }).catch(() => {});
+  }
+
+  // clicar no canal em que já estou só traz a chamada para a frente
+  function openVoice(channelId: string) {
+    setDrawer(false);
+    unlockAudio();
+    if (channelId === ownVoice?.channel_id) setVoiceFocus((n) => n + 1);
+    else setVoice(channelId);
   }
 
   function toggleMute() {
     const next = !muted;
     setMuted(next);
     if (!next && deaf) setDeaf(false);
-    if (myVoice) setVoice(myVoice.channel_id, { mute: next, deaf: next ? deaf : false });
+    if (ownVoice) setVoice(ownVoice.channel_id!, { mute: next, deaf: next ? deaf : false });
   }
 
   function toggleDeaf() {
     const next = !deaf;
     setDeaf(next);
     if (next) setMuted(true);
-    if (myVoice) setVoice(myVoice.channel_id, { deaf: next, mute: next ? true : muted });
+    if (ownVoice) setVoice(ownVoice.channel_id!, { deaf: next, mute: next ? true : muted });
   }
 
   if (!state.me) {
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-ink text-sheet">
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-chrome text-on-chrome">
         <LogoMark size={56} inverted />
         <span className="flex items-center gap-2 font-mono text-sm text-faint">
           <Loader2 size={16} className="animate-spin" /> Conectando…
@@ -159,7 +230,7 @@ function Shell() {
   const footer = (
     <>
       <div ref={setVoiceSlot} />
-      <UserBar muted={muted} deaf={deaf} onMute={toggleMute} onDeaf={toggleDeaf} onSettings={() => setProfile(true)} />
+      <UserBar muted={muted} deaf={deaf} onMute={toggleMute} onDeaf={toggleDeaf} onSettings={() => setProfile(true)} onInstallHelp={() => setInstallHelp(true)} />
     </>
   );
 
@@ -167,9 +238,9 @@ function Shell() {
     <GuildSidebar
       guild={guild}
       channelId={channel?.id ?? null}
-      voiceChannelId={myVoice?.guild_id === guild.id ? myVoice.channel_id : null}
+      voiceChannelId={ownVoice?.guild_id === guild.id ? ownVoice.channel_id : null}
       onSelect={(id) => go({ channelByGuild: { ...nav.channelByGuild, [guild.id]: id } })}
-      onVoice={(id) => setVoice(id === myVoice?.channel_id ? null : id)}
+      onVoice={openVoice}
       onInvite={() => setInvite(guild)}
       onCreateChannel={(parentId, type) => setCreateChannel({ guild, parentId, type })}
       onLeave={() => setLeave(guild)}
@@ -187,7 +258,7 @@ function Shell() {
   );
 
   return (
-    <div className="flex h-dvh overflow-hidden bg-ink text-ink">
+    <div data-theme={black ? "black" : undefined} style={accentVars(guild?.accent_color, black)} className="flex h-dvh overflow-hidden bg-chrome text-ink">
       <div
         className={`fixed inset-y-0 left-0 z-40 flex transition-transform duration-300 md:static md:translate-x-0 ${
           drawer ? "translate-x-0" : "-translate-x-full"
@@ -196,13 +267,14 @@ function Shell() {
         <Rail active={guild ? guild.id : "home"} onSelect={(id) => go({ place: id })} onAdd={() => setAddGuild(true)} />
         <div className="flex md:overflow-hidden md:rounded-tl-xl">{sidebar}</div>
       </div>
-      {drawer && <button aria-label="Fechar menu" className="fixed inset-0 z-30 bg-ink/50 md:hidden" onClick={() => setDrawer(false)} />}
+      {drawer && <button aria-label="Fechar menu" className="fixed inset-0 z-30 bg-scrim/50 md:hidden" onClick={() => setDrawer(false)} />}
 
       <main className="flex min-w-0 flex-1 flex-col">
         {state.conn !== "ready" && (
-          <div className="bg-mustard px-3 py-1 text-center text-xs font-semibold text-ink">Conexão caiu. Reconectando…</div>
+          <div className="bg-mustard px-3 py-1 text-center text-xs font-semibold text-chrome">Conexão caiu. Reconectando…</div>
         )}
         {state.me.verified === false && <VerifyBanner email={state.me.email} />}
+        <div ref={setVoiceBar} className="md:hidden" />
         <div className="flex min-h-0 flex-1">
           {channel ? (
             <>
@@ -211,12 +283,12 @@ function Shell() {
                 channel={channel}
                 guild={guild}
                 membersOpen={membersOpen}
-                onToggleMembers={() => setMembersOpen((v) => !v)}
+                onToggleMembers={toggleMembers}
                 onMenu={() => setDrawer(true)}
                 onInvite={guild ? () => setInvite(guild) : undefined}
                 onOpenChannel={(id) => guild && go({ channelByGuild: { ...nav.channelByGuild, [guild.id]: id } })}
               />
-              {guild && membersOpen && <Members guild={guild} onDm={openDmWith} />}
+              {guild && membersOpen && <Members guild={guild} onDm={openDmWith} className="hidden lg:block" />}
             </>
           ) : guild ? (
             <EmptyGuild guild={guild} onCreate={() => setCreateChannel({ guild, parentId: null, type: 0 })} />
@@ -226,12 +298,35 @@ function Shell() {
         </div>
       </main>
 
+      {guild && channel && membersDrawer && (
+        <div className="fixed inset-0 z-40 flex justify-end lg:hidden">
+          <button aria-label="Fechar membros" className="flex-1 bg-scrim/50" onClick={() => setMembersDrawer(false)} />
+          <Members guild={guild} onDm={openDmWith} className="max-w-[80vw] pt-[env(safe-area-inset-top)]" />
+        </div>
+      )}
+
       {/* fica fora das barras laterais pra chamada não cair ao trocar de tela */}
-      <VoicePanel voice={myVoice} muted={muted} deaf={deaf} slot={voiceSlot} />
+      <VoicePanel
+        voice={ownVoice}
+        elsewhere={elsewhere}
+        kicked={voiceKicked}
+        muted={muted}
+        deaf={deaf}
+        slot={voiceSlot}
+        mobileBar={voiceBar}
+        focusSignal={voiceFocus}
+        sessionId={sessionId}
+        onLeave={leaveVoice}
+        onTakeOver={() => elsewhere?.channel_id && setVoice(elsewhere.channel_id)}
+        onReplaced={() => setVoiceKicked(true)}
+        onMute={toggleMute}
+        onDeaf={toggleDeaf}
+      />
 
       <AddGuildModal open={addGuild} onClose={() => setAddGuild(false)} onDone={(id) => go({ place: id })} />
       <NewDmModal open={newDm} onClose={() => setNewDm(false)} onOpen={(id) => go({ place: "home", dm: id })} />
       <ProfileModal open={profile} onClose={() => setProfile(false)} />
+      <InstallHelpModal open={installHelp} onClose={() => setInstallHelp(false)} />
       <InviteModal guild={invite} channelId={guild && channel?.guild_id === guild.id ? channel.id : null} onClose={() => setInvite(null)} />
       <GuildSettingsModal guild={settings} onClose={() => setSettings(null)} />
       <CreateChannelModal
@@ -295,7 +390,7 @@ function EmptyGuild({ guild, onCreate }: { guild: ApiGuild; onCreate: () => void
     <section className="flex flex-1 flex-col items-center justify-center bg-sheet px-6 text-center">
       <span className="font-serif text-5xl italic text-faint">Silêncio por aqui.</span>
       <p className="mt-2 text-muted">O {guild.name} ainda não tem canal de texto que você consiga ver.</p>
-      <button onClick={onCreate} className="mt-5 rounded-full border border-ink bg-signal px-5 py-2.5 font-semibold text-sheet shadow-hard-sm">
+      <button onClick={onCreate} className="mt-5 rounded-full border border-ink bg-signal px-5 py-2.5 font-semibold text-on-signal shadow-hard-sm">
         Criar canal
       </button>
     </section>

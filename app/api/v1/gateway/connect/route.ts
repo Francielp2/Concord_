@@ -4,7 +4,7 @@ import type { NextRequest } from "next/server";
 import { requireAuth } from "@/lib/server/auth";
 import { errorResponse } from "@/lib/server/http";
 import { busEnabled, busVersion, waitForEvents } from "@/lib/server/bus";
-import { maybeSweep } from "@/lib/server/maintenance";
+import { VOICE_SWEEP_INTERVAL_MS, maybeSweep, maybeSweepVoice } from "@/lib/server/maintenance";
 import { touchPresence } from "@/lib/server/presence";
 import { parseSnowflake } from "@/lib/server/snowflake";
 import {
@@ -102,6 +102,7 @@ export async function GET(req: NextRequest) {
         const startedAt = Date.now();
         let lastWrite = Date.now();
         let lastTouch = Date.now();
+        let lastVoiceSweep = Date.now();
         let resumed = resumeSeq == null;
 
         while (!closed) {
@@ -138,6 +139,11 @@ export async function GET(req: NextRequest) {
             lastTouch = now;
             await touchPresence(userId);
             await maybeSweep();
+          }
+          if (now - lastVoiceSweep > VOICE_SWEEP_INTERVAL_MS) {
+            lastVoiceSweep = now;
+            // sem await: uma consulta lenta ao LiveKit não pode atrasar a entrega dos eventos
+            void maybeSweepVoice().catch((err) => console.error("[concord] varredura de voz falhou", err));
           }
           if (now - lastWrite > KEEPALIVE_MS) {
             write(": keepalive\n\n");

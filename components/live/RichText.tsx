@@ -26,7 +26,7 @@ export function RichText({ text, guildId }: { text: string; guildId?: string }) 
           const u = state.users[m[1]];
           const self = m[1] === state.me?.id;
           return (
-            <span key={i} className={`rounded px-1 font-semibold ${self ? "bg-mustard/30 text-ink" : "bg-signal/15 text-signal-ink"}`}>
+            <span key={i} className={`rounded px-1 font-semibold ${self ? "bg-mention/30 text-ink" : "bg-signal/15 text-signal-ink"}`}>
               @{displayName(u)}
             </span>
           );
@@ -49,7 +49,7 @@ export function RichText({ text, guildId }: { text: string; guildId?: string }) 
         }
         if (part === "@everyone" || part === "@here") {
           return (
-            <span key={i} className="rounded bg-mustard/30 px-1 font-semibold">
+            <span key={i} className="rounded bg-mention/30 px-1 font-semibold">
               {part}
             </span>
           );

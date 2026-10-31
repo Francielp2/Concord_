@@ -24,7 +24,7 @@ function Item({
   return (
     <div className="group relative flex w-full justify-center">
       <motion.span
-        className="absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-r bg-sheet"
+        className="absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-r bg-on-chrome"
         initial={false}
         animate={{ height: active ? 36 : pill ? 8 : 0, opacity: active || pill ? 1 : 0 }}
         transition={{ type: "spring", stiffness: 500, damping: 32 }}
@@ -38,7 +38,7 @@ function Item({
       >
         {children}
         {!!badge && (
-          <span className="absolute -right-1 -bottom-1 flex h-5 min-w-5 items-center justify-center rounded-full border-[3px] border-ink bg-signal px-1 font-mono text-[10px] font-bold text-sheet">
+          <span className="absolute -right-1 -bottom-1 flex h-5 min-w-5 items-center justify-center rounded-full border-[3px] border-chrome bg-signal px-1 font-mono text-[10px] font-bold text-on-signal">
             {badge > 99 ? "99+" : badge}
           </span>
         )}
@@ -55,18 +55,18 @@ export function Rail({ active, onSelect, onAdd }: { active: string; onSelect: (i
   const dmMentions = Object.values(state.dms).reduce((n, c) => n + mentionCount(state, c.id), 0);
 
   return (
-    <nav className="scroll-ink flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-ink py-3">
+    <nav className="scroll-ink flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-chrome py-3">
       <Item active={active === "home"} label="Mensagens diretas" onClick={() => onSelect("home")} badge={dmMentions}>
         <span
           className={`flex h-full w-full items-center justify-center rounded-[inherit] transition-colors ${
-            active === "home" ? "bg-signal" : "bg-ink-2 hover:bg-signal"
+            active === "home" ? "bg-signal" : "bg-chrome-2 hover:bg-signal"
           }`}
         >
           <LogoMark size={28} inverted />
         </span>
       </Item>
 
-      <span className="my-1 h-0.5 w-8 rounded bg-ink-3" />
+      <span className="my-1 h-0.5 w-8 rounded bg-chrome-3" />
 
       {state.guildOrder.map((id) => {
         const g = state.guilds[id];
@@ -84,7 +84,7 @@ export function Rail({ active, onSelect, onAdd }: { active: string; onSelect: (i
             ) : (
               <span
                 className="flex h-full w-full items-center justify-center rounded-[inherit] font-display text-[15px] font-bold"
-                style={{ background: on ? color : "var(--color-ink-2)", color: on ? "var(--color-sheet)" : color }}
+                style={{ background: on ? color : "var(--color-chrome-2)", color: on ? "var(--color-on-chrome)" : color }}
               >
                 {initialsOf(g.name)}
               </span>
@@ -94,7 +94,7 @@ export function Rail({ active, onSelect, onAdd }: { active: string; onSelect: (i
       })}
 
       <Item active={false} label="Criar ou entrar num servidor" onClick={onAdd}>
-        <span className="flex h-full w-full items-center justify-center rounded-[inherit] bg-ink-2 text-online transition-colors hover:bg-online hover:text-sheet">
+        <span className="flex h-full w-full items-center justify-center rounded-[inherit] bg-chrome-2 text-online transition-colors hover:bg-online hover:text-sheet">
           <Plus size={22} />
         </span>
       </Item>

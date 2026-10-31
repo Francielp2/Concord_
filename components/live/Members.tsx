@@ -6,7 +6,7 @@ import { displayName, statusOf, useStore } from "@/lib/client/store";
 import type { ApiGuild, ApiMember } from "@/lib/client/types";
 import { UserAvatar } from "./ui";
 
-export function Members({ guild, onDm }: { guild: ApiGuild; onDm: (userId: string) => void }) {
+export function Members({ guild, onDm, className }: { guild: ApiGuild; onDm: (userId: string) => void; className: string }) {
   const { state, loadMembers } = useStore();
   const members = state.members[guild.id];
 
@@ -31,7 +31,7 @@ export function Members({ guild, onDm }: { guild: ApiGuild; onDm: (userId: strin
   groups.push({ title: "Offline", items: rest.filter((m) => !online(m)) });
 
   return (
-    <aside className="scroll-thin hidden w-60 shrink-0 overflow-y-auto border-l border-ink/15 bg-paper-2 px-2 pb-4 lg:block">
+    <aside className={`scroll-thin w-60 shrink-0 overflow-y-auto border-l border-ink/15 bg-paper-2 px-2 pb-4 ${className}`}>
       {!members && <p className="px-2 pt-5 text-sm text-muted">Carregando membros…</p>}
       {groups
         .filter((g) => g.items.length)

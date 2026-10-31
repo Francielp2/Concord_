@@ -75,3 +75,14 @@ export function sniffImageType(buf: Buffer): string | null {
   if (buf.length > 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
   return null;
 }
+
+// Mesmo princípio para os sons do soundboard
+export function sniffAudioType(buf: Buffer): string | null {
+  if (buf.length < 12) return null;
+  if (buf.toString("ascii", 0, 4) === "OggS") return "audio/ogg";
+  if (buf.toString("ascii", 0, 4) === "RIFF" && buf.toString("ascii", 8, 12) === "WAVE") return "audio/wav";
+  if (buf.readUInt32BE(0) === 0x1a45dfa3) return "audio/webm";
+  if (buf.toString("ascii", 4, 8) === "ftyp") return "audio/mp4";
+  if (buf.toString("ascii", 0, 3) === "ID3" || (buf[0] === 0xff && (buf[1] & 0xe0) === 0xe0)) return "audio/mpeg";
+  return null;
+}

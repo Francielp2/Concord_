@@ -39,6 +39,7 @@ model User {
   authTokens    AuthToken[]
   attachments   Attachment[]
   emojis        Emoji[]
+  sounds        Sound[]
   webhooks      Webhook[]
 }
 
@@ -57,8 +58,11 @@ model Session {
 model Guild {
   id              BigInt   @id
   name            String   @db.VarChar(100)
-  icon            String?  @db.VarChar(512)
+  icon            String?  @db.VarChar(1024)
   description     String?  @db.VarChar(300)
+  banner          String?  @db.VarChar(1024)
+  // cor de destaque, em RGB (0xRRGGBB). Nula: a cor padrão do app
+  accentColor     Int?
   ownerId         BigInt
   systemChannelId BigInt?
   createdAt       DateTime @default(now())
@@ -71,6 +75,8 @@ model Guild {
   bans        Ban[]
   voiceStates VoiceState[]
   emojis      Emoji[]
+  sounds      Sound[]
+  assets      GuildAsset[]
   webhooks    Webhook[]
 
   @@index([ownerId])
@@ -294,9 +300,14 @@ model VoiceState {
   userId    BigInt   @id
   guildId   BigInt
   channelId BigInt
+  // dispositivo que está na chamada (o último a entrar vence)
   sessionId String   @db.VarChar(64)
   selfMute  Boolean  @default(false)
   selfDeaf  Boolean  @default(false)
+  // silenciado por um moderador; vale até sair do canal
+  serverMute Boolean @default(false)
+  // último heartbeat de voz desse dispositivo
+  lastSeenAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -305,6 +316,7 @@ model VoiceState {
 
   @@index([guildId])
   @@index([channelId])
+  @@index([lastSeenAt])
 }
 
 // Fila de eventos do gateway. Cada evento vai para:
@@ -392,6 +404,38 @@ model Emoji {
   creatorId   BigInt
   animated    Boolean  @default(false)
   contentType String   @db.VarChar(32)
+  url         String?  @db.VarChar(1024)
+  data        Bytes?   @db.MediumBlob
+  createdAt   DateTime @default(now())
+
+  guild   Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  creator User  @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, name])
+}
+
+// Ícone ou banner enviado pelo servidor. Mesmo armazenamento dos emojis.
+model GuildAsset {
+  id          BigInt   @id
+  guildId     BigInt
+  contentType String   @db.VarChar(32)
+  url         String?  @db.VarChar(1024)
+  data        Bytes?   @db.MediumBlob
+  createdAt   DateTime @default(now())
+
+  guild Guild @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId])
+}
+
+// Som do soundboard. Mesmo modelo do emoji: no Blob (url) ou no próprio banco (data).
+model Sound {
+  id          BigInt   @id
+  guildId     BigInt
+  name        String   @db.VarChar(32)
+  creatorId   BigInt
+  contentType String   @db.VarChar(32)
+  durationMs  Int
   url         String?  @db.VarChar(1024)
   data        Bytes?   @db.MediumBlob
   createdAt   DateTime @default(now())

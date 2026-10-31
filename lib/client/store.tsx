@@ -246,7 +246,11 @@ function onEvent(s: State, t: string, d: Record<string, unknown>): State {
         delete dms[c.id];
         return { ...s, dms };
       }
-      return patchGuild(s, c.guild_id, (g) => ({ ...g, channels: g.channels.filter((x) => x.id !== c.id) }));
+      return patchGuild(s, c.guild_id, (g) => ({
+        ...g,
+        channels: g.channels.filter((x) => x.id !== c.id),
+        voice_states: g.voice_states.filter((v) => v.channel_id !== c.id),
+      }));
     }
     case "GUILD_ROLE_CREATE":
     case "GUILD_ROLE_UPDATE": {
@@ -258,6 +262,8 @@ function onEvent(s: State, t: string, d: Record<string, unknown>): State {
     }
     case "GUILD_EMOJIS_UPDATE":
       return patchGuild(s, d.guild_id as string, (g) => ({ ...g, emojis: d.emojis as ApiGuild["emojis"] }));
+    case "GUILD_SOUNDS_UPDATE":
+      return patchGuild(s, d.guild_id as string, (g) => ({ ...g, sounds: d.sounds as ApiGuild["sounds"] }));
     case "GUILD_ROLE_DELETE":
       return patchGuild(s, d.guild_id as string, (g) => ({ ...g, roles: g.roles.filter((r) => r.id !== d.role_id) }));
     case "GUILD_MEMBER_ADD":

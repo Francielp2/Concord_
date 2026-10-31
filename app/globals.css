@@ -21,13 +21,55 @@
   --color-idle: #e9b44c;
   --color-dnd: #e0483a;
 
+  /* papéis que não mudam junto com o papel e a tinta: */
+  /* superfícies sempre escuras (rail, janela da chamada, véu dos modais) */
+  --color-chrome: #191714;
+  --color-chrome-2: #2a2723;
+  --color-chrome-3: #3a3631;
+  --color-on-chrome: #faf7f0;
+  --color-scrim: #191714;
+  /* o que a cor de destaque do servidor troca (lib/client/theme.ts) */
+  --color-on-signal: #faf7f0;
+  --color-channel-active: #e2d9c6;
+  --color-mention: #e9b44c;
+  --color-shadow: #191714;
+
   --font-sans: var(--ff-body);
   --font-display: var(--ff-display);
   --font-serif: var(--ff-serif);
   --font-mono: var(--ff-mono);
 
-  --shadow-hard: 4px 4px 0 0 var(--color-ink);
-  --shadow-hard-sm: 2px 2px 0 0 var(--color-ink);
+  --shadow-hard: 4px 4px 0 0 var(--color-shadow);
+  --shadow-hard-sm: 2px 2px 0 0 var(--color-shadow);
+}
+
+/* Fundo preto (opção do usuário). Papel e tinta invertem; como "ink" também é texto,
+   tudo que usa os tokens acompanha sem mudar nenhum componente. */
+[data-theme="black"] {
+  --color-paper: #000;
+  --color-paper-2: #000;
+  --color-paper-3: #1c1c1c;
+  --color-sheet: #000;
+  --color-ink: #f2efe8;
+  --color-ink-2: #e6e2da;
+  --color-ink-3: #cfcac0;
+  --color-muted: #a8a296;
+  --color-faint: #918b80;
+  --color-signal-ink: #ff7a55;
+  --color-online: #3fbf72;
+  --color-dnd: #f0645a;
+  --color-chrome: #000;
+  --color-chrome-2: #1c1c1c;
+  --color-chrome-3: #2e2e2e;
+  --color-on-chrome: #f2efe8;
+  --color-scrim: #000;
+  --color-on-signal: #000;
+  --color-channel-active: #1c1c1c;
+  --color-shadow: #3a3a3a;
+}
+/* com papel preto, o hover de papel sobre papel sumiria */
+[data-theme="black"] [class*="hover:bg-paper"]:hover {
+  background-color: #1c1c1c;
 }
 
 html,
@@ -42,7 +84,7 @@ body {
 
 ::selection {
   background: var(--color-signal);
-  color: var(--color-sheet);
+  color: var(--color-on-signal);
 }
 
 /* barras de rolagem finas, no tom do papel */

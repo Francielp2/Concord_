@@ -99,7 +99,7 @@ export function Friends({ onDm, onMenu }: { onDm: (userId: string) => void; onMe
                 <span className="relative">
                   {t.label}
                   {t.id === "pending" && !!incoming && (
-                    <span className="ml-1.5 rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-sheet">{incoming}</span>
+                    <span className="ml-1.5 rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-on-signal">{incoming}</span>
                   )}
                 </span>
               </button>
@@ -133,7 +133,7 @@ export function Friends({ onDm, onMenu }: { onDm: (userId: string) => void; onMe
                   placeholder="nome.de.usuario"
                   className="flex-1 bg-transparent font-mono text-[15px] outline-none placeholder:text-faint"
                 />
-                <button disabled={!username.trim() || busy} className="rounded-md bg-signal px-3 py-1.5 text-sm font-semibold text-sheet disabled:opacity-40">
+                <button disabled={!username.trim() || busy} className="rounded-md bg-signal px-3 py-1.5 text-sm font-semibold text-on-signal disabled:opacity-40">
                   Enviar pedido
                 </button>
               </form>

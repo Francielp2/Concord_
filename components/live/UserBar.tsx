@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Headphones, HeadphoneOff, LogOut, Mic, MicOff, Settings } from "lucide-react";
+import { Download, Headphones, HeadphoneOff, LogOut, Mic, MicOff, Settings } from "lucide-react";
 import { api } from "@/lib/client/api";
+import { promptInstall, useInstallMode } from "@/lib/client/install";
 import { displayName, statusOf, useStore } from "@/lib/client/store";
 import type { Status } from "@/lib/client/types";
 import { STATUS_PT, UserAvatar } from "./ui";
@@ -16,15 +17,18 @@ export function UserBar({
   onMute,
   onDeaf,
   onSettings,
+  onInstallHelp,
 }: {
   muted: boolean;
   deaf: boolean;
   onMute: () => void;
   onDeaf: () => void;
   onSettings: () => void;
+  onInstallHelp: () => void;
 }) {
   const { state, dispatch, gatewaySend } = useStore();
   const [menu, setMenu] = useState(false);
+  const install = useInstallMode();
   const me = state.me;
   const btn = "flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:bg-paper-3 hover:text-ink";
 
@@ -40,7 +44,7 @@ export function UserBar({
   }
 
   return (
-    <div className="relative flex h-[58px] shrink-0 items-center gap-1 border-t border-ink/15 bg-paper-3/60 px-2">
+    <div className="relative flex min-h-[58px] shrink-0 items-center gap-1 border-t border-ink/15 bg-paper-3/60 px-2 pb-[env(safe-area-inset-bottom)]">
       <AnimatePresence>
         {menu && (
           <motion.div
@@ -62,6 +66,18 @@ export function UserBar({
               </button>
             ))}
             <span className="my-1 block h-px bg-ink/15" />
+            {install && (
+              <button
+                onClick={() => {
+                  setMenu(false);
+                  if (install === "prompt") promptInstall().catch(() => {});
+                  else onInstallHelp();
+                }}
+                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-paper-2"
+              >
+                <Download size={15} /> Instalar o app
+              </button>
+            )}
             <button onClick={logout} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-dnd hover:bg-dnd/10">
               <LogOut size={15} /> Sair da conta
             </button>

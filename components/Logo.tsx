@@ -2,7 +2,7 @@ type Props = { size?: number; className?: string; inverted?: boolean };
 
 // dois círculos que se encontram: o "acordo"
 export function LogoMark({ size = 28, className, inverted }: Props) {
-  const ink = inverted ? "var(--color-sheet)" : "var(--color-ink)";
+  const ink = inverted ? "var(--color-on-chrome)" : "var(--color-ink)";
   return (
     <svg width={size} height={size} viewBox="0 0 32 32" className={className} aria-hidden>
       <circle cx="12" cy="16" r="9" fill="none" stroke={ink} strokeWidth="2.4" />

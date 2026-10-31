@@ -94,9 +94,9 @@ Mensagens no formato do Discord: `{ op, d, s, t }`.
 | op | Nome | Direção |
 |---|---|---|
 | 0 | DISPATCH | servidor → cliente (eventos, com `t` e `s`) |
-| 1 | HEARTBEAT | cliente → servidor (`POST /gateway`) |
+| 1 | HEARTBEAT | cliente → servidor (`POST /gateway`). Com `{ voice_session_id }` é o heartbeat de voz, a cada 10s |
 | 3 | PRESENCE_UPDATE | cliente → servidor `{ status: online\|idle\|dnd\|invisible, custom_status? }` |
-| 4 | VOICE_STATE_UPDATE | cliente → servidor `{ guild_id, channel_id \| null, self_mute, self_deaf }` |
+| 4 | VOICE_STATE_UPDATE | cliente → servidor `{ guild_id, channel_id \| null, self_mute, self_deaf, session_id? }`. `session_id` identifica o dispositivo: ao entrar, substitui o anterior (o último vence); ao sair, só vale se ainda for o dele |
 | 7 | RECONNECT | servidor → cliente: reconecte e retome |
 | 9 | INVALID_SESSION | servidor → cliente: não dá para retomar, conecte do zero |
 | 10 | HELLO | servidor → cliente, primeira mensagem |
@@ -113,7 +113,14 @@ Fluxo:
 5. Se o seq for mais antigo que a fila (24h) ou inválido: `INVALID_SESSION`. Conecte sem seq.
 
 Enquanto a conexão está aberta, o usuário fica online (o próprio SSE renova a presença a cada 30s).
-Sem conexão por mais de 90s, ele fica offline e sai do canal de voz.
+Sem conexão por mais de 90s, ele fica offline.
+
+A voz tem controle próprio, por dispositivo, porque um celular pode cair da chamada com o PC online.
+Quem sai é retirado por um destes caminhos, do mais rápido ao mais lento:
+
+1. `sendBeacon` no `pagehide` (a página fechou).
+2. Webhook `participant_left` do LiveKit em `POST /voice/webhook` (a aba morreu sem avisar).
+3. Varredura a cada 10s: 25s sem heartbeat de voz e fora da sala do LiveKit (sem LiveKit configurado, só o heartbeat conta).
 
 ### Eventos
 
@@ -147,7 +154,7 @@ Threads usam `CHANNEL_CREATE`/`CHANNEL_UPDATE`/`CHANNEL_DELETE` com `type: 11`.
 |---|---|---|
 | POST | `/guilds` `{ name }` | cria com @everyone, "geral" (texto) e "Geral" (voz) |
 | GET | `/guilds/{id}?with_counts=true` | membro |
-| PATCH | `/guilds/{id}` | MANAGE_GUILD (`owner_id` só o dono) |
+| PATCH | `/guilds/{id}` | MANAGE_GUILD (`owner_id` só o dono). Aceita também `icon`, `banner` (só imagem enviada em `/assets`) e `accent_color` (0xRRGGBB ou null) |
 | DELETE | `/guilds/{id}` | dono |
 | GET/POST | `/guilds/{id}/channels` | POST: MANAGE_CHANNELS. Tipos 0, 2, 4; dentro de categoria herda as permissões dela |
 | PATCH | `/guilds/{id}/channels` `[{ id, position, parent_id }]` | MANAGE_CHANNELS |
@@ -206,7 +213,14 @@ Emoji do servidor no texto: `<:nome:id>`; na reação: `nome:id` (precisa existi
 | GET | `/emojis/{id}.png` | imagem do emoji (pública) |
 | PATCH/DELETE | `/webhooks/{id}` | MANAGE_WEBHOOKS |
 | GET/POST/DELETE | `/webhooks/{id}/{token}` | sem login. POST `{ content, username?, avatar_url? }` posta no canal (`?wait=true` devolve a mensagem). Não menciona ninguém |
-| POST | `/voice/token` | depois de entrar no canal de voz (op 4): `{ url, token }` da sala LiveKit. 503 sem LiveKit configurado |
+| POST | `/voice/token` `{ session_id? }` | depois de entrar no canal de voz (op 4): `{ url, token }` da sala LiveKit. 503 sem LiveKit configurado, 409 se a chamada já passou para outro dispositivo |
+| POST | `/guilds/{id}/assets` | MANAGE_GUILD. Multipart (`kind` = `icon` ou `banner`, `image`), até 1 MB e 4 MB. Devolve `{ url }`, que passa a valer no PATCH da guild |
+| GET | `/guild-assets/{id}` | ícone ou banner (público) |
+| PATCH | `/guilds/{id}/voice-states/{user.id}` `{ mute }` | MUTE_MEMBERS. Silencia para todos: tira a permissão de publicar o microfone no próprio LiveKit, até a pessoa sair do canal |
+| GET/POST | `/guilds/{id}/sounds` | soundboard. POST em multipart (`name`, `duration_ms`, `sound`), MANAGE_SOUNDBOARD, até 300 KB e 5s, 30 por servidor. Evento `GUILD_SOUNDS_UPDATE` |
+| PATCH/DELETE | `/guilds/{id}/sounds/{sound.id}` | MANAGE_SOUNDBOARD |
+| GET | `/sounds/{id}` | arquivo do som (público, como o emoji) |
+| POST | `/voice/webhook` | chamado pelo LiveKit, com assinatura conferida. Em `participant_left`, tira a pessoa do canal |
 
 Arquivos: com `BLOB_READ_WRITE_TOKEN` vão pro Vercel Blob (a URL do anexo aponta direto pra lá);
 sem ele ficam no MySQL. Anexo que subiu e não foi em nenhuma mensagem some em 1h. Apagar a mensagem
