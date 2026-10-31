@@ -59,10 +59,10 @@ export function Friends({
     tab === "online" ? "Online" : tab === "all" ? "Todos os amigos" : tab === "pending" ? "Pendentes" : "Bloqueados";
 
   return (
-    // abaixo de xl rola tudo junto e a coluna direita vira uma seção no fim; em xl cada coluna rola sozinha
-    <section className="scroll-thin flex min-w-0 flex-1 flex-col overflow-y-auto bg-sheet xl:flex-row xl:overflow-hidden">
-      <div className="shrink-0 xl:flex xl:min-w-0 xl:flex-1 xl:shrink xl:flex-col">
-      <header className="sticky top-0 z-10 flex min-h-14 shrink-0 items-center gap-3 border-b border-line bg-sheet px-3 xl:relative xl:h-[65px] xl:min-h-[65px]">
+    // abaixo do quadro rola tudo junto e a coluna direita vira uma seção no fim; no quadro cada coluna rola sozinha
+    <section className="scroll-thin flex min-w-0 flex-1 flex-col overflow-y-auto bg-sheet board:flex-row board:overflow-hidden">
+      <div className="shrink-0 board:flex board:min-w-0 board:flex-1 board:shrink board:flex-col">
+      <header className="sticky top-0 z-10 flex min-h-14 shrink-0 items-center gap-3 border-b border-line bg-sheet px-3 board:relative board:h-[65px] board:min-h-[65px]">
           <button
             className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 hover:bg-paper-2 md:hidden"
             aria-label="Abrir menu"
@@ -103,7 +103,7 @@ export function Friends({
             ))}
             <button
               onClick={() => onTab("add")}
-              className={`whitespace-nowrap rounded-lg bg-add-friend px-2.5 py-1 text-[15px] font-semibold text-on-add-friend hover:brightness-110 xl:h-[38px] xl:rounded-xl xl:px-4 2xl:absolute 2xl:left-[573px] 2xl:top-4 2xl:w-[181px] ${
+              className={`whitespace-nowrap rounded-lg bg-add-friend px-2.5 py-1 text-[15px] font-semibold text-on-add-friend hover:brightness-110 board:h-[38px] board:rounded-xl board:px-4 board:absolute board:left-[573px] board:top-4 board:w-[181px] ${
                 tab === "add" ? "ring-2 ring-inset ring-signal-ink" : ""
               }`}
             >
@@ -112,9 +112,9 @@ export function Friends({
           </nav>
         </header>
 
-        <div className="scroll-thin min-w-0 px-3 pt-3 sm:px-6 sm:pt-4 xl:min-h-0 xl:flex-1 xl:overflow-y-auto xl:pl-[29px] xl:pr-[25px] xl:pt-5">
+        <div className="scroll-thin min-w-0 px-3 pt-3 sm:px-6 sm:pt-4 board:min-h-0 board:flex-1 board:overflow-y-auto board:pl-[29px] board:pr-[25px] board:pt-5">
           <FriendsBanner />
-          <div className={tab === "add" ? "mt-4 xl:mt-0" : "mt-4"}>
+          <div className={tab === "add" ? "mt-4 board:mt-0" : "mt-4"}>
             {tab === "add" ? (
               <AddFriendTab />
             ) : (
@@ -157,7 +157,7 @@ export function Friends({
 
       </div>
 
-        <div className="scroll-thin mt-4 shrink-0 space-y-4 border-t border-line bg-shell-right p-3 sm:p-6 xl:mt-0 xl:w-[300px] xl:shrink-0 xl:space-y-6 xl:overflow-y-auto xl:border-l xl:border-t-0 xl:border-shell-right-line xl:pb-6 xl:pl-[13px] xl:pr-4 xl:pt-4 2xl:w-[351px]">
+        <div className="scroll-thin mt-4 shrink-0 space-y-4 border-t border-line bg-shell-right p-3 sm:p-6 board:mt-0 board:shrink-0 board:space-y-6 board:overflow-y-auto board:border-l board:border-t-0 board:border-shell-right-line board:pb-6 board:pl-[13px] board:pr-4 board:pt-4 board:w-[351px]">
           <RollingNow onDm={onDm} onJoin={onJoin} />
           <InviteCard />
         </div>

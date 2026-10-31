@@ -41,8 +41,8 @@ export function RollingNow({ onDm, onJoin }: { onDm: (userId: string) => void; o
     .sort((a, b) => a.live.rank - b.live.rank || displayName(a.user).localeCompare(displayName(b.user)));
 
   return (
-    <aside aria-labelledby="rolling-now" className="flex flex-col rounded-2xl bg-card-roll p-2.5 xl:h-[342px]" data-rolling-card>
-      <div className="px-1.5 py-2 xl:h-[100px] xl:shrink-0 xl:py-3">
+    <aside aria-labelledby="rolling-now" className="flex flex-col rounded-2xl bg-card-roll p-2.5 board:h-[342px]" data-rolling-card>
+      <div className="px-1.5 py-2 board:h-[100px] board:shrink-0 board:py-3">
         <h3 id="rolling-now" className="flex items-center gap-2 font-display text-xl font-extrabold">
           <Play size={20} className="shrink-0 fill-online text-online" aria-hidden />
           Rolando agora
@@ -51,7 +51,7 @@ export function RollingNow({ onDm, onJoin }: { onDm: (userId: string) => void; o
       </div>
 
       {cards.length ? (
-        <ul className="scroll-thin mt-2 space-y-[9px] xl:mt-0 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
+        <ul className="scroll-thin mt-2 space-y-[9px] board:mt-0 board:min-h-0 board:flex-1 board:overflow-y-auto">
           {cards.map(({ id, user, status, live }) => {
             const name = displayName(user);
             const line = live.line ?? STATUS_PT[status];
@@ -99,7 +99,7 @@ export function RollingNow({ onDm, onJoin }: { onDm: (userId: string) => void; o
           })}
         </ul>
       ) : (
-        <p className="mt-2 rounded-xl border border-dashed xl:mt-0 border-line-strong px-4 py-6 text-center text-sm text-muted">
+        <p className="board:flex board:min-h-0 board:flex-1 board:items-center board:justify-center mt-2 rounded-xl border border-dashed board:mt-0 border-line-strong px-4 py-6 text-center text-sm text-muted">
           Quando seus amigos estiverem jogando ou em chamada, aparece aqui.
         </p>
       )}

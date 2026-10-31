@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* o quadro de desktop (lib/client/useWide.ts): daqui para cima a tela escala em vez de refluir */
+@custom-variant board (@media (min-width: 1000px));
+
 @theme {
   --color-paper: #f4efe4;
   --color-paper-2: #ece5d6;

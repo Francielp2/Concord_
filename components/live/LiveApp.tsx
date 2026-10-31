@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
 import { api } from "@/lib/client/api";
 import { registerServiceWorker } from "@/lib/client/install";
@@ -10,6 +10,7 @@ import { StoreProvider, useStore } from "@/lib/client/store";
 import { unlockAudio } from "@/lib/client/sounds";
 import { accentVars, useTheme } from "@/lib/client/theme";
 import type { ApiChannel, ApiGuild } from "@/lib/client/types";
+import { useBoardScale } from "@/lib/client/useWide";
 import { voiceSessionId } from "@/lib/client/voice";
 import { Chat } from "./Chat";
 import { CommandPalette, type PaletteTarget } from "./CommandPalette";
@@ -89,6 +90,7 @@ function Shell() {
   const [voiceKicked, setVoiceKicked] = useState(false);
   const [sessionId] = useState(voiceSessionId);
   const theme = useTheme();
+  const scale = useBoardScale();
   // no <html>, para a rolagem elástica e a janela destacada da chamada acompanharem o tema
   useEffect(() => {
     const root = document.documentElement;
@@ -182,9 +184,9 @@ function Shell() {
     setMembersDrawer(false);
   };
 
-  // abaixo de lg a lista de membros não cabe do lado do chat: abre em gaveta
+  // abaixo do quadro a lista de membros não cabe do lado do chat: abre em gaveta
   function toggleMembers() {
-    if (window.matchMedia("(min-width: 1024px)").matches) setMembersOpen((v) => !v);
+    if (window.matchMedia("(min-width: 1000px)").matches) setMembersOpen((v) => !v);
     else setMembersDrawer((v) => !v);
   }
 
@@ -293,8 +295,8 @@ function Shell() {
   );
 
   return (
-    <div style={accentVars(guild?.accent_color, theme)} className="app-backdrop h-dvh text-ink md:p-3 lg:p-4 xl:p-0">
-      <div className="relative flex h-full flex-col overflow-hidden bg-rail md:rounded-3xl md:border md:border-line md:shadow-pop xl:rounded-none xl:border-0 xl:shadow-none">
+    <div style={accentVars(guild?.accent_color, theme)} className="app-backdrop h-dvh text-ink md:p-3 lg:p-4 board:p-0">
+      <div style={scale ? { zoom: scale } : undefined} className="relative flex h-full flex-col overflow-hidden bg-rail md:rounded-3xl md:border md:border-line md:shadow-pop board:rounded-none board:border-0 board:shadow-none">
         {/* no celular só na tela Amigos: dentro do chat a altura é do campo de mensagem */}
         <TopBar
           className={channel || guild ? "hidden md:flex" : "flex"}
@@ -307,22 +309,22 @@ function Shell() {
           onActivity={() => setActivityOpen(true)}
           onInstallHelp={() => setInstallHelp(true)}
         />
-        <div className="flex min-h-0 flex-1 xl:pt-[69px]">
+        <div className="flex min-h-0 flex-1 board:pt-[69px]">
         <div
           className={`fixed inset-y-0 left-0 z-40 flex transition-transform duration-300 md:static md:translate-x-0 ${
             drawer ? "translate-x-0" : "-translate-x-full"
           }`}
         >
           <Rail active={guild ? guild.id : "home"} onSelect={(id) => go({ place: id })} onAdd={() => setAddGuild(true)} />
-          <div className="flex md:overflow-hidden md:rounded-tl-2xl xl:rounded-none">{sidebar}</div>
+          <div className="flex md:overflow-hidden md:rounded-tl-2xl board:rounded-none">{sidebar}</div>
         </div>
         {drawer && <button aria-label="Fechar menu" className="fixed inset-0 z-30 bg-scrim/50 md:hidden" onClick={() => setDrawer(false)} />}
 
-        <main className="flex min-w-0 flex-1 flex-col bg-sheet">
+        <main className="relative flex min-w-0 flex-1 flex-col bg-sheet">
           {state.conn !== "ready" && (
             <div className="bg-mustard px-3 py-1 text-center text-xs font-semibold text-chrome">Conexão caiu. Reconectando…</div>
           )}
-          {state.me.verified === false && <VerifyBanner email={state.me.email} />}
+          {state.me.verified === false && <VerifyBanner email={state.me.email} className={channel ? "top-1" : "bottom-2"} />}
           <div ref={setVoiceBar} className="md:hidden" />
           <div className="flex min-h-0 flex-1">
             {channel ? (
@@ -341,7 +343,7 @@ function Shell() {
             ) : (
               <Friends tab={friendsTab} onTab={setFriendsTab} onDm={openDmWith} onJoin={openVoice} onMenu={() => setDrawer(true)} />
             )}
-            {guild && membersOpen && <Members guild={guild} onDm={openDmWith} className="hidden lg:block" />}
+            {guild && membersOpen && <Members guild={guild} onDm={openDmWith} className="hidden lg:block board:block" />}
           </div>
         </main>
         </div>
@@ -407,20 +409,21 @@ function Shell() {
   );
 }
 
-function VerifyBanner({ email }: { email?: string }) {
+// Por cima do conteúdo, para não empurrar a tela: no chat fica no alto, longe do campo de mensagem.
+function VerifyBanner({ email, className }: { email?: string; className: string }) {
   const [status, setStatus] = useState<"idle" | "sent" | "error">("idle");
   const [hidden, setHidden] = useState(false);
   if (hidden) return null;
   return (
-    <div className="flex items-center justify-center gap-3 border-b border-line bg-paper-2 px-3 py-1.5 text-xs text-ink-3">
-      <span>
+    <div data-verify-banner className={`absolute left-1/2 z-30 flex h-7 max-w-[calc(100%-1rem)] -translate-x-1/2 items-center gap-2 rounded-full border border-line-strong bg-paper-2 pl-3 pr-1 text-xs text-ink-3 shadow-pop ${className}`}>
+      <span className="min-w-0 truncate" title={email}>
         Confirma teu e-mail{email ? <> (<b className="text-ink">{email}</b>)</> : null} pelo link que mandamos.
       </span>
       {status === "sent" ? (
-        <span className="font-semibold text-online">Link reenviado.</span>
+        <span className="shrink-0 font-semibold text-online">Link reenviado.</span>
       ) : (
         <button
-          className="font-semibold text-signal-ink underline-offset-2 hover:underline"
+          className="shrink-0 font-semibold text-signal-ink underline-offset-2 hover:underline"
           onClick={() =>
             api("/auth/verify/send", { method: "POST" })
               .then(() => setStatus("sent"))
@@ -430,8 +433,8 @@ function VerifyBanner({ email }: { email?: string }) {
           {status === "error" ? "Tenta daqui a pouco" : "Reenviar"}
         </button>
       )}
-      <button aria-label="Esconder aviso" className="text-faint hover:text-ink" onClick={() => setHidden(true)}>
-        ×
+      <button aria-label="Fechar aviso" className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-muted hover:bg-paper-3 hover:text-ink" onClick={() => setHidden(true)}>
+        <X size={14} />
       </button>
     </div>
   );

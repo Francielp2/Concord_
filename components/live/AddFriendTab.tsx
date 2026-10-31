@@ -20,11 +20,11 @@ const COPIED_MS = 1800;
 
 const card = "rounded-2xl border border-line bg-paper p-4 shadow-soft";
 // no desktop as seções abrem direto no miolo, sem caixa em volta
-const flat = "xl:rounded-none xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none";
+const flat = "board:rounded-none board:border-0 board:bg-transparent board:p-0 board:shadow-none";
 
 export function AddFriendTab() {
   return (
-    <div className="space-y-4 pb-6 xl:space-y-0 xl:pb-[69px]">
+    <div className="space-y-4 pb-6 board:space-y-0 board:pb-[69px]">
       <AddFriend />
       <Suggestions />
     </div>
@@ -115,13 +115,13 @@ function AddFriend() {
 
   return (
     <div className={`${card} ${flat}`}>
-      <div className="xl:flex xl:h-[100px] xl:flex-col xl:justify-end xl:pb-3">
-        <h2 className="font-display text-xl font-bold xl:text-2xl">Adicione amigo</h2>
+      <div className="board:flex board:h-[100px] board:flex-col board:justify-end board:pb-3">
+        <h2 className="font-display text-xl font-bold board:text-2xl">Adicione amigo</h2>
         <p className="mt-1 text-sm text-muted">Procure pelo nome de usuário ou de exibição e escolha a pessoa na lista.</p>
       </div>
       <div className="relative">
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row xl:mt-0 xl:gap-3.5 xl:px-px">
-        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-field px-3 py-2.5 focus-within:border-line-strong xl:h-[45px] xl:py-0">
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row board:mt-0 board:gap-3.5">
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-field px-3 py-2.5 focus-within:border-line-strong board:h-[45px] board:py-0">
           <Search size={18} className="shrink-0 text-muted" />
           <input
             value={text}
@@ -142,14 +142,14 @@ function AddFriend() {
           type="button"
           disabled={!chosen || sending}
           onClick={send}
-          className="shrink-0 rounded-xl bg-signal px-4 py-2.5 text-sm font-semibold text-on-signal enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 xl:h-[45px] xl:w-[169px] xl:py-0"
+          className="shrink-0 rounded-xl bg-signal px-4 py-2.5 text-sm font-semibold text-on-signal enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 board:h-[45px] board:w-[169px] board:py-0"
         >
           {sending ? "Enviando…" : "Enviar pedido"}
         </button>
       </div>
 
       {/* no desktop a lista abre por cima das sugestões, sem empurrar o resto da tela */}
-      <div className={(text.trim() || msg) ? "xl:absolute xl:inset-x-px xl:top-[calc(100%+6px)] xl:z-30 xl:max-h-80 xl:overflow-y-auto xl:rounded-xl xl:border xl:border-line-strong xl:bg-sheet xl:p-2 xl:shadow-pop" : ""}>
+      <div className={(text.trim() || msg) ? "board:absolute board:inset-x-0 board:top-[calc(100%+6px)] board:z-30 board:max-h-80 board:overflow-y-auto board:rounded-xl board:border board:border-line-strong board:bg-sheet board:p-2 board:shadow-pop" : ""}>
       <div aria-live="polite">
         {text.trim() && !searching && <p className="mt-2 text-sm text-muted">Digite pelo menos {MIN_QUERY} letras.</p>}
         {loading && <p className="mt-2 text-sm text-muted">Buscando…</p>}
@@ -187,7 +187,7 @@ function AddFriend() {
       </div>
       </div>
 
-      <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-3 text-sm text-muted xl:mt-0 xl:h-[62px] xl:content-center xl:border-b xl:border-t-0 xl:pt-0">
+      <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-3 text-sm text-muted board:mt-0 board:h-[62px] board:content-center board:border-b board:border-t-0 board:pt-0">
         <span className="min-w-0 break-words">
           Seu usuário é <b className="font-mono text-ink">@{state.me?.username}</b>. Passe para a galera te achar.
         </span>
@@ -215,8 +215,8 @@ function readList(key: string): string[] {
   }
 }
 
-// Servidores em comum, com os membros dos 3 primeiros servidores (listas que o app já carrega ao abrir
-// cada um). "Amigos em comum" exigiria ver a lista de amigos dos outros.
+// Primeiro quem divide servidor (membros dos 3 primeiros, listas que o app já carrega ao abrir cada um);
+// se faltar, completa com outras pessoas do Concord. "Amigos em comum" exigiria ver a lista de amigos dos outros.
 function Suggestions() {
   const { state, loadMembers } = useStore();
   const wide = useWide();
@@ -225,6 +225,7 @@ function Suggestions() {
   const [dismissed, setDismissed] = useState(() => readList(dismissKey));
   const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState("");
+  const [others, setOthers] = useState<Found[] | null>(null);
 
   const guildIds = useMemo(() => state.guildOrder.slice(0, SUGGESTION_GUILDS), [state.guildOrder]);
   const missing = guildIds.filter((id) => !state.members[id]);
@@ -235,17 +236,27 @@ function Suggestions() {
 
   const people = useMemo(() => {
     const common = new Map<string, { user: ApiUser; count: number }>();
+    const free = (id: string) => id !== myId && !state.relationships[id] && !dismissed.includes(id);
     for (const id of guildIds) {
       for (const m of Object.values(state.members[id] ?? {})) {
         const u = m.user;
-        if (!u || u.bot || u.id === myId || state.relationships[u.id] || dismissed.includes(u.id)) continue;
+        if (!u || u.bot || !free(u.id)) continue;
         common.set(u.id, { user: state.users[u.id] ?? u, count: (common.get(u.id)?.count ?? 0) + 1 });
       }
     }
-    return [...common.values()]
-      .sort((a, b) => b.count - a.count || displayName(a.user).localeCompare(displayName(b.user)))
-      .slice(0, SUGGESTION_LIMIT);
-  }, [guildIds, state.members, state.relationships, state.users, dismissed, myId]);
+    const shared = [...common.values()].sort((a, b) => b.count - a.count || displayName(a.user).localeCompare(displayName(b.user)));
+    // quem não divide servidor só completa a linha
+    const rest = (others ?? []).filter((u) => free(u.id) && !common.has(u.id)).map((u) => ({ user: { ...u, bio: null }, count: 0 }));
+    return [...shared, ...rest].slice(0, SUGGESTION_LIMIT);
+  }, [guildIds, state.members, state.relationships, state.users, dismissed, myId, others]);
+
+  const needOthers = !missing.length && others === null && people.length < SUGGESTION_LIMIT;
+  useEffect(() => {
+    if (!needOthers) return;
+    api<Found[]>("/users/search?suggest=1")
+      .then(setOthers)
+      .catch(() => setOthers([]));
+  }, [needOthers]);
 
   function dismiss(id: string) {
     const next = [...dismissed, id];
@@ -269,25 +280,23 @@ function Suggestions() {
     }
   }
 
-  if (!guildIds.length) return null;
-
   return (
     <section aria-labelledby="friend-suggestions" className={`${card} ${flat}`}>
-      <h2 id="friend-suggestions" className="font-display text-lg font-bold xl:flex xl:h-[81px] xl:items-end xl:pb-3 xl:text-xl">
+      <h2 id="friend-suggestions" className="font-display text-lg font-bold board:flex board:h-[81px] board:items-end board:pb-3 board:text-xl">
         Sugestões de amizade
       </h2>
       {error && <p className="mt-2 text-sm text-dnd">{error}</p>}
       {people.length ? (
-        <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:mt-0 xl:grid-cols-4 xl:gap-3 2xl:gap-[17px]">
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2 board:mt-0 board:grid-cols-4 board:gap-[17px]">
           {people.map(({ user, count }) => {
             const name = displayName(user);
             return (
-              <li key={user.id} data-suggestion className="relative flex min-w-0 items-center gap-2.5 rounded-xl border border-card-suggest-line bg-card-suggest p-2.5 xl:h-[195px] xl:flex-col xl:gap-2 xl:rounded-[14px] xl:px-3.5 xl:pb-[51px] xl:pt-5 xl:text-center">
+              <li key={user.id} data-suggestion className="relative flex min-w-0 items-center gap-2.5 rounded-xl border border-card-suggest-line bg-card-suggest p-2.5 board:h-[195px] board:flex-col board:gap-2 board:rounded-[14px] board:px-3.5 board:pb-[51px] board:pt-5 board:text-center">
                 <UserAvatar user={user} size={wide ? 56 : 38} />
-                <span className="min-w-0 flex-1 leading-tight xl:w-full">
+                <span className="min-w-0 flex-1 leading-tight board:w-full">
                   <span className="block truncate text-sm font-semibold">{name}</span>
-                  <span className="mt-0.5 block truncate text-xs text-muted xl:whitespace-normal">
-                    {count} {count === 1 ? "servidor em comum" : "servidores em comum"}
+                  <span className="mt-0.5 block truncate text-xs text-muted board:whitespace-normal">
+                    {!count ? `@${user.username}` : `${count} ${count === 1 ? "servidor em comum" : "servidores em comum"}`}
                   </span>
                 </span>
                 <button
@@ -295,16 +304,16 @@ function Suggestions() {
                   aria-label={`Adicionar ${name}`}
                   disabled={!!sending}
                   onClick={() => add(user)}
-                  className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-signal px-2 text-xs font-semibold text-on-signal enabled:hover:brightness-110 disabled:opacity-50 xl:absolute xl:inset-x-3.5 xl:bottom-[15px] xl:h-[35px] xl:justify-center xl:text-sm"
+                  className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-signal px-2 text-xs font-semibold text-on-signal enabled:hover:brightness-110 disabled:opacity-50 board:absolute board:inset-x-3.5 board:bottom-[15px] board:h-[35px] board:justify-center board:text-sm"
                 >
                   <UserPlus size={14} className="shrink-0" />
-                  <span className="hidden min-[400px]:inline xl:inline">{sending === user.id ? "Enviando…" : "Adicionar"}</span>
+                  <span className="hidden min-[400px]:inline board:inline">{sending === user.id ? "Enviando…" : "Adicionar"}</span>
                 </button>
                 <button
                   type="button"
                   aria-label={`Dispensar sugestão de ${name}`}
                   onClick={() => dismiss(user.id)}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-paper-3 hover:text-ink xl:absolute xl:right-1.5 xl:top-1.5"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-paper-3 hover:text-ink board:absolute board:right-1.5 board:top-1.5"
                 >
                   <X size={16} />
                 </button>
@@ -313,7 +322,7 @@ function Suggestions() {
           })}
         </ul>
       ) : (
-        <p className="mt-2 text-sm text-muted xl:mt-0 xl:flex xl:h-[195px] xl:items-center xl:justify-center xl:rounded-[14px] xl:border xl:border-card-suggest-line xl:bg-card-suggest">{missing.length ? "Procurando gente dos seus servidores…" : "Sem sugestões por enquanto."}</p>
+        <p className="mt-2 text-sm text-muted board:mt-0 board:flex board:h-[195px] board:items-center board:justify-center board:rounded-[14px] board:border board:border-card-suggest-line board:bg-card-suggest">{missing.length || needOthers ? "Procurando gente…" : "Sem sugestões por enquanto."}</p>
       )}
     </section>
   );
@@ -375,35 +384,35 @@ export function InviteCard() {
   }
 
   return (
-    <section aria-labelledby="invite-friends" className="rounded-2xl bg-card-invite p-4 xl:h-[438px] xl:pb-0 xl:pl-5 xl:pr-[19px] xl:pt-0" data-invite-card>
-      <div className="xl:h-[116px] xl:pt-5">
+    <section aria-labelledby="invite-friends" className="rounded-2xl bg-card-invite p-4 board:h-[438px] board:pb-0 board:pl-5 board:pr-[19px] board:pt-0" data-invite-card>
+      <div className="board:h-[116px] board:pt-5">
         <h2 id="invite-friends" className="flex items-center gap-2 font-display text-lg font-bold">
           <Link2 size={18} className="shrink-0 text-muted" aria-hidden />
           Convide seus amigos
         </h2>
         <p className="mt-1 text-sm text-muted">{invite?.note ?? "Preparando o link…"}</p>
       </div>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row xl:mt-0 xl:flex-col xl:gap-[13px]">
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row board:mt-0 board:flex-col board:gap-[13px]">
         <input
           ref={input}
           readOnly
           value={invite?.link ?? ""}
           aria-label="Link de convite"
           onFocus={(e) => e.target.select()}
-          className="min-w-0 flex-1 rounded-xl border border-line bg-card-item px-3 py-2.5 font-mono text-sm outline-none focus:border-line-strong xl:h-11 xl:flex-none xl:py-0"
+          className="min-w-0 flex-1 rounded-xl border border-line bg-card-item px-3 py-2.5 font-mono text-sm outline-none focus:border-line-strong board:h-11 board:flex-none board:py-0"
         />
         <button
           type="button"
           disabled={!invite}
           onClick={copy}
-          className={`flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 xl:h-[43px] xl:py-0 ${copied ? "bg-online text-sheet" : "bg-signal text-on-signal hover:brightness-110"}`}
+          className={`flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 board:h-[43px] board:py-0 ${copied ? "bg-online text-sheet" : "bg-signal text-on-signal hover:brightness-110"}`}
         >
           {copied ? <Check size={15} /> : <Copy size={15} />}
           {copied ? "Copiado" : "Copiar link"}
         </button>
       </div>
       {copyFailed && <p className="mt-2 text-sm text-dnd">O navegador não deixou copiar. O link está selecionado: use Ctrl+C.</p>}
-      <ol className="mt-5 hidden space-y-3 text-sm text-ink-3 xl:block">
+      <ol className="mt-5 hidden space-y-3 text-sm text-ink-3 board:block">
         {["Copie o link", "Mande para a galera", "Quem abrir já entra no servidor"].map((step, i) => (
           <li key={step} className="flex items-center gap-2.5">
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-card-item text-xs font-bold text-signal-ink">{i + 1}</span>
