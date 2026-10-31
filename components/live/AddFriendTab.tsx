@@ -1,20 +1,23 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, Copy, Link2, Loader2, Search, UserPlus, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowRight, Check, Copy, Link2, Loader2, Megaphone, Search, UserPlus, Users, X } from "lucide-react";
+import { LogoMark } from "@/components/Logo";
 import { api } from "@/lib/client/api";
 import { copyText } from "@/lib/client/clipboard";
-import { displayName, useStore } from "@/lib/client/store";
+import { displayName, statusOf, useStore } from "@/lib/client/store";
 import { useWide } from "@/lib/client/useWide";
-import { Perm, Rel, channelHasPerm, type ApiInvite, type ApiUser } from "@/lib/client/types";
+import { Perm, Rel, channelHasPerm, type ApiChannel, type ApiInvite, type ApiUser } from "@/lib/client/types";
 import { UserAvatar } from "./ui";
 
 type Found = Pick<ApiUser, "id" | "username" | "global_name" | "avatar">;
+type Suggestion = Found & { mutual_friends: number };
+
+export const FRIEND_SEARCH_ID = "friend-search";
 
 const MIN_QUERY = 2;
 const SEARCH_DEBOUNCE_MS = 250;
-const SUGGESTION_LIMIT = 4; // uma linha de cartões; dispensar um traz o próximo
-const SUGGESTION_GUILDS = 3;
+const SUGGESTION_ROW = 4; // uma linha de cartões; dispensar um traz o próximo
 const INVITE_MAX_AGE = 604800; // igual ao modal de convite: o servidor reaproveita o mesmo código
 const COPIED_MS = 1800;
 
@@ -57,7 +60,8 @@ function AddFriend() {
   const [copied, markCopied] = useCopied();
   const [copyFailed, setCopyFailed] = useState(false);
 
-  const q = text.trim().replace(/^@/, "");
+  // a busca é só pelo nome: quem colar "deyvid#1234" acha o deyvid
+  const q = text.trim().replace(/^@/, "").replace(/#.*$/, "");
   const searching = q.length >= MIN_QUERY;
   const loading = searching && result?.q !== q;
 
@@ -115,22 +119,26 @@ function AddFriend() {
 
   return (
     <div className={`${card} ${flat}`}>
-      <div className="board:flex board:h-[100px] board:flex-col board:justify-end board:pb-3">
-        <h2 className="font-display text-xl font-bold board:text-2xl">Adicione amigo</h2>
-        <p className="mt-1 text-sm text-muted">Procure pelo nome de usuário ou de exibição e escolha a pessoa na lista.</p>
+      <div className="board:flex board:h-[100px] board:flex-col board:justify-end board:pb-5">
+        <h2 className="flex items-center gap-2 font-display text-xl font-bold board:gap-3 board:text-[22px]">
+          <Users size={22} className="shrink-0 fill-signal text-signal" aria-hidden />
+          Adicione amigo
+        </h2>
+        <p className="mt-1 text-sm text-muted board:text-[15px]">Procure pelo nome de usuário ou tag (ex: deyvid#1234) e envie um pedido de amizade.</p>
       </div>
       <div className="relative">
       <div className="mt-4 flex flex-col gap-2 sm:flex-row board:mt-0 board:gap-3.5">
-        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-field px-3 py-2.5 focus-within:border-line-strong board:h-[45px] board:py-0">
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line-strong bg-field px-3 py-2.5 focus-within:border-signal board:h-[45px] board:py-0 board:pl-4">
           <Search size={18} className="shrink-0 text-muted" />
           <input
+            id={FRIEND_SEARCH_ID}
             value={text}
             onChange={(e) => {
               setText(e.target.value);
               setPicked(null);
               setMsg(null);
             }}
-            placeholder="Comece a digitar um nome"
+            placeholder="Comece a digitar um nome de usuário..."
             aria-label="Buscar pessoas"
             autoComplete="off"
             maxLength={32}
@@ -142,8 +150,9 @@ function AddFriend() {
           type="button"
           disabled={!chosen || sending}
           onClick={send}
-          className="shrink-0 rounded-xl bg-signal px-4 py-2.5 text-sm font-semibold text-on-signal enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 board:h-[45px] board:w-[169px] board:py-0"
+          className="fill-signal-btn flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-on-signal enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 board:h-[45px] board:w-[169px] board:py-0 board:text-base"
         >
+          <UserPlus size={18} className="shrink-0" aria-hidden />
           {sending ? "Enviando…" : "Enviar pedido"}
         </button>
       </div>
@@ -187,16 +196,16 @@ function AddFriend() {
       </div>
       </div>
 
-      <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-3 text-sm text-muted board:mt-0 board:h-[62px] board:content-center board:border-b board:border-t-0 board:pt-0">
+      <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-3 text-sm text-muted board:mt-0 board:h-[62px] board:content-center board:border-b board:border-t-0 board:pb-1 board:pt-0 board:text-[15px]">
         <span className="min-w-0 break-words">
-          Seu usuário é <b className="font-mono text-ink">@{state.me?.username}</b>. Passe para a galera te achar.
+          Seu usuário é <b className="text-ink">{state.me?.username}.</b> Passe para a galera te achar.
         </span>
         <button
           type="button"
           aria-label="Copiar meu usuário"
           title="Copiar meu usuário"
           onClick={copyUsername}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-ink-3 hover:border-line-strong hover:text-ink"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-paper-3 hover:text-ink"
         >
           {copied ? <Check size={15} className="text-online" /> : <Copy size={15} />}
         </button>
@@ -215,48 +224,26 @@ function readList(key: string): string[] {
   }
 }
 
-// Primeiro quem divide servidor (membros dos 3 primeiros, listas que o app já carrega ao abrir cada um);
-// se faltar, completa com outras pessoas do Concord. "Amigos em comum" exigiria ver a lista de amigos dos outros.
+// A lista vem pronta do servidor: quem divide servidor primeiro, depois quem tem amigos em comum,
+// e o resto completa. Os amigos em comum são contados lá, e a tela só recebe o número.
 function Suggestions() {
-  const { state, loadMembers } = useStore();
+  const { state } = useStore();
   const wide = useWide();
-  const myId = state.me?.id;
-  const dismissKey = `concord:suggestions-dismissed:${myId}`;
+  const dismissKey = `concord:suggestions-dismissed:${state.me?.id}`;
   const [dismissed, setDismissed] = useState(() => readList(dismissKey));
   const [sending, setSending] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [others, setOthers] = useState<Found[] | null>(null);
+  const [pool, setPool] = useState<Suggestion[] | null>(null);
+  const [limit, setLimit] = useState(SUGGESTION_ROW);
 
-  const guildIds = useMemo(() => state.guildOrder.slice(0, SUGGESTION_GUILDS), [state.guildOrder]);
-  const missing = guildIds.filter((id) => !state.members[id]);
-  const missingKey = missing.join();
   useEffect(() => {
-    if (missingKey) missingKey.split(",").forEach((id) => loadMembers(id).catch(() => {}));
-  }, [missingKey, loadMembers]);
+    api<Suggestion[]>("/users/search?suggest=1")
+      .then(setPool)
+      .catch(() => setPool([]));
+  }, []);
 
-  const people = useMemo(() => {
-    const common = new Map<string, { user: ApiUser; count: number }>();
-    const free = (id: string) => id !== myId && !state.relationships[id] && !dismissed.includes(id);
-    for (const id of guildIds) {
-      for (const m of Object.values(state.members[id] ?? {})) {
-        const u = m.user;
-        if (!u || u.bot || !free(u.id)) continue;
-        common.set(u.id, { user: state.users[u.id] ?? u, count: (common.get(u.id)?.count ?? 0) + 1 });
-      }
-    }
-    const shared = [...common.values()].sort((a, b) => b.count - a.count || displayName(a.user).localeCompare(displayName(b.user)));
-    // quem não divide servidor só completa a linha
-    const rest = (others ?? []).filter((u) => free(u.id) && !common.has(u.id)).map((u) => ({ user: { ...u, bio: null }, count: 0 }));
-    return [...shared, ...rest].slice(0, SUGGESTION_LIMIT);
-  }, [guildIds, state.members, state.relationships, state.users, dismissed, myId, others]);
-
-  const needOthers = !missing.length && others === null && people.length < SUGGESTION_LIMIT;
-  useEffect(() => {
-    if (!needOthers) return;
-    api<Found[]>("/users/search?suggest=1")
-      .then(setOthers)
-      .catch(() => setOthers([]));
-  }, [needOthers]);
+  const free = (pool ?? []).filter((u) => !state.relationships[u.id] && !dismissed.includes(u.id));
+  const people = free.slice(0, limit);
 
   function dismiss(id: string) {
     const next = [...dismissed, id];
@@ -266,7 +253,7 @@ function Suggestions() {
     } catch {}
   }
 
-  async function add(user: ApiUser) {
+  async function add(user: Suggestion) {
     setSending(user.id);
     setError("");
     try {
@@ -282,21 +269,39 @@ function Suggestions() {
 
   return (
     <section aria-labelledby="friend-suggestions" className={`${card} ${flat}`}>
-      <h2 id="friend-suggestions" className="font-display text-lg font-bold board:flex board:h-[81px] board:items-end board:pb-3 board:text-xl">
-        Sugestões de amizade
-      </h2>
+      <div className="flex items-center gap-3 board:h-[81px] board:pl-[3px]">
+        <Users size={wide ? 32 : 22} className="shrink-0 fill-signal text-signal" aria-hidden />
+        <div className="min-w-0 flex-1 leading-tight">
+          <h2 id="friend-suggestions" className="font-display text-lg font-bold">
+            Sugestões de amizade
+          </h2>
+          <p className="mt-0.5 text-xs text-muted board:text-[13px]">Pessoas que você pode conhecer no Concord.</p>
+        </div>
+        {free.length > limit && (
+          <button
+            type="button"
+            onClick={() => setLimit((n) => n + SUGGESTION_ROW)}
+            className="flex shrink-0 items-center gap-1.5 rounded-lg text-sm font-medium text-ink-3 hover:text-ink"
+          >
+            Ver mais <ArrowRight size={16} aria-hidden />
+          </button>
+        )}
+      </div>
       {error && <p className="mt-2 text-sm text-dnd">{error}</p>}
       {people.length ? (
         <ul className="mt-3 grid gap-2 sm:grid-cols-2 board:mt-0 board:grid-cols-4 board:gap-[17px]">
-          {people.map(({ user, count }) => {
-            const name = displayName(user);
+          {people.map((user) => {
+            const person = { ...user, bio: null };
+            const name = displayName(person);
+            const status = statusOf(state, user.id);
+            const count = user.mutual_friends;
             return (
-              <li key={user.id} data-suggestion className="relative flex min-w-0 items-center gap-2.5 rounded-xl border border-card-suggest-line bg-card-suggest p-2.5 board:h-[195px] board:flex-col board:gap-2 board:rounded-[14px] board:px-3.5 board:pb-[51px] board:pt-5 board:text-center">
-                <UserAvatar user={user} size={wide ? 56 : 38} />
+              <li key={user.id} data-suggestion className="relative flex min-w-0 items-center gap-2.5 rounded-xl border border-card-suggest-line bg-card-suggest p-2.5 board:h-[195px] board:flex-col board:gap-2.5 board:rounded-[14px] board:px-5 board:pb-[51px] board:pt-[13px] board:text-center">
+                <UserAvatar user={person} size={wide ? 64 : 38} status={status === "offline" ? undefined : status} ring="border-card-suggest" />
                 <span className="min-w-0 flex-1 leading-tight board:w-full">
-                  <span className="block truncate text-sm font-semibold">{name}</span>
-                  <span className="mt-0.5 block truncate text-xs text-muted board:whitespace-normal">
-                    {!count ? `@${user.username}` : `${count} ${count === 1 ? "servidor em comum" : "servidores em comum"}`}
+                  <span className="block truncate text-sm font-semibold board:text-base">{name}</span>
+                  <span className="mt-0.5 block truncate text-xs text-muted board:mt-0 board:text-sm">
+                    {count ? `${count} ${count === 1 ? "amigo em comum" : "amigos em comum"}` : `@${user.username}`}
                   </span>
                 </span>
                 <button
@@ -304,16 +309,16 @@ function Suggestions() {
                   aria-label={`Adicionar ${name}`}
                   disabled={!!sending}
                   onClick={() => add(user)}
-                  className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-signal px-2 text-xs font-semibold text-on-signal enabled:hover:brightness-110 disabled:opacity-50 board:absolute board:inset-x-3.5 board:bottom-[15px] board:h-[35px] board:justify-center board:text-sm"
+                  className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-suggest-btn px-2 text-xs font-semibold text-on-signal enabled:hover:brightness-125 disabled:opacity-50 board:absolute board:bottom-[15px] board:left-5 board:right-[18px] board:h-9 board:justify-center board:gap-2 board:text-[15px]"
                 >
-                  <UserPlus size={14} className="shrink-0" />
+                  <UserPlus size={wide ? 16 : 14} className="shrink-0" aria-hidden />
                   <span className="hidden min-[400px]:inline board:inline">{sending === user.id ? "Enviando…" : "Adicionar"}</span>
                 </button>
                 <button
                   type="button"
                   aria-label={`Dispensar sugestão de ${name}`}
                   onClick={() => dismiss(user.id)}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-paper-3 hover:text-ink board:absolute board:right-1.5 board:top-1.5"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-paper-3 hover:text-ink board:absolute board:right-1 board:top-1"
                 >
                   <X size={16} />
                 </button>
@@ -322,108 +327,117 @@ function Suggestions() {
           })}
         </ul>
       ) : (
-        <p className="mt-2 text-sm text-muted board:mt-0 board:flex board:h-[195px] board:items-center board:justify-center board:rounded-[14px] board:border board:border-card-suggest-line board:bg-card-suggest">{missing.length || needOthers ? "Procurando gente…" : "Sem sugestões por enquanto."}</p>
+        <p className="mt-2 text-sm text-muted board:mt-0 board:flex board:h-[195px] board:items-center board:justify-center board:rounded-[14px] board:border board:border-card-suggest-line board:bg-card-suggest">{pool ? "Sem sugestões por enquanto." : "Procurando gente…"}</p>
       )}
     </section>
   );
 }
 
-// abrir a aba de novo não gasta o limite de criação de convites
-let cachedInvite: { guildId: string; guildName: string; link: string } | null = null;
+// abrir a tela de novo não gasta o limite de criação de convites
+let cachedInvite: { guildId: string; link: string } | null = null;
 
 export function InviteCard() {
   const { state } = useStore();
   const myId = state.me?.id;
-  const [invite, setInvite] = useState<{ link: string; note: string } | null>(() =>
-    cachedInvite && state.guilds[cachedInvite.guildId] ? { link: cachedInvite.link, note: inviteNote(cachedInvite.guildName) } : null,
-  );
+  const [link, setLink] = useState<string | null>(() => (cachedInvite && state.guilds[cachedInvite.guildId] ? cachedInvite.link : null));
   const [copied, markCopied] = useCopied();
   const [copyFailed, setCopyFailed] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
-  const targets = useMemo(() => {
-    const list: { guildId: string; guildName: string; channelId: string }[] = [];
-    for (const id of state.guildOrder) {
-      const guild = state.guilds[id];
-      if (!guild) continue;
-      const text = guild.channels.filter((c) => c.type === 0);
-      const channel = text.find((c) => c.id === guild.system_channel_id && channelHasPerm(guild, c, myId, Perm.CREATE_INSTANT_INVITE)) ?? text.find((c) => channelHasPerm(guild, c, myId, Perm.CREATE_INSTANT_INVITE));
-      if (channel) list.push({ guildId: id, guildName: guild.name, channelId: channel.id });
+  // primeiro servidor em que dá para convidar
+  let channelId: string | undefined;
+  let guildId: string | undefined;
+  for (const id of state.guildOrder) {
+    const guild = state.guilds[id];
+    const text = guild?.channels.filter((c) => c.type === 0) ?? [];
+    const can = (c: ApiChannel) => channelHasPerm(guild, c, myId, Perm.CREATE_INSTANT_INVITE);
+    const channel = text.find((c) => c.id === guild?.system_channel_id && can(c)) ?? text.find(can);
+    if (channel) {
+      channelId = channel.id;
+      guildId = id;
+      break;
     }
-    return list;
-  }, [state.guildOrder, state.guilds, myId]);
-  const first = targets[0];
-  const hasInvite = !!invite;
+  }
+  const hasLink = !!link;
 
   useEffect(() => {
-    if (hasInvite) return;
+    if (hasLink) return;
     let stale = false;
-    const fallback = () => ({ link: window.location.origin, note: "Endereço do Concord. Você ainda não pode convidar para nenhum servidor." });
     (async () => {
-      if (!first) return setInvite(fallback());
+      if (!channelId || !guildId) return setLink(window.location.origin);
       try {
-        const inv = await api<ApiInvite>(`/channels/${first.channelId}/invites`, { body: { max_age: INVITE_MAX_AGE } });
-        const link = `${window.location.origin}/invite/${inv.code}`;
-        cachedInvite = { guildId: first.guildId, guildName: first.guildName, link };
-        if (!stale) setInvite({ link, note: inviteNote(first.guildName) });
+        const inv = await api<ApiInvite>(`/channels/${channelId}/invites`, { body: { max_age: INVITE_MAX_AGE } });
+        const url = `${window.location.origin}/invite/${inv.code}`;
+        cachedInvite = { guildId, link: url };
+        if (!stale) setLink(url);
       } catch {
-        if (!stale) setInvite(fallback());
+        if (!stale) setLink(window.location.origin);
       }
     })();
     return () => {
       stale = true;
     };
-  }, [hasInvite, first]);
+  }, [hasLink, channelId, guildId]);
 
   async function copy() {
-    if (!invite) return;
-    const ok = await copyText(invite.link);
+    if (!link) return;
+    const ok = await copyText(link);
     setCopyFailed(!ok);
     if (ok) markCopied();
     else input.current?.select();
   }
 
   return (
-    <section aria-labelledby="invite-friends" className="rounded-2xl bg-card-invite p-4 board:h-[438px] board:pb-0 board:pl-5 board:pr-[19px] board:pt-0" data-invite-card>
-      <div className="board:h-[116px] board:pt-5">
-        <h2 id="invite-friends" className="flex items-center gap-2 font-display text-lg font-bold">
-          <Link2 size={18} className="shrink-0 text-muted" aria-hidden />
+    <section aria-labelledby="invite-friends" className="relative overflow-hidden rounded-2xl bg-card-invite p-4 board:h-[438px] board:pb-0 board:pl-5 board:pr-[19px] board:pt-0" data-invite-card>
+      {/* marca d'água: só decoração, sem atrapalhar o clique */}
+      <span aria-hidden className="pointer-events-none absolute inset-0 hidden board:block" data-invite-art>
+        <span className="absolute inset-x-0 bottom-0 h-1/2 bg-[radial-gradient(90%_70%_at_75%_100%,color-mix(in_srgb,var(--color-signal)_24%,transparent),transparent)]" />
+        <svg viewBox="0 0 321 438" className="absolute inset-0 h-full w-full" fill="none" stroke="var(--color-signal)" strokeOpacity="0.6" strokeWidth="1.2" preserveAspectRatio="none">
+          <path d="M321 244C262 256 232 298 226 344C220 396 198 420 158 414C120 408 80 412 51 438" />
+          <path d="M321 334C270 332 214 356 186 396C176 410 170 424 166 438" />
+        </svg>
+        <LogoMark size={64} stroke="var(--color-signal)" className="absolute left-[128px] top-[312px] opacity-35" />
+      </span>
+      <div className="relative board:h-[116px] board:pt-5">
+        <h2 id="invite-friends" className="flex items-center gap-2 font-display text-lg font-bold board:gap-2.5 board:text-[19px]">
+          <Megaphone size={24} className="shrink-0 fill-signal text-signal" aria-hidden />
           Convide seus amigos
         </h2>
-        <p className="mt-1 text-sm text-muted">{invite?.note ?? "Preparando o link…"}</p>
+        <p className="mt-1 text-sm text-muted board:max-w-[260px] board:text-[15px] board:leading-5">Compartilhe o link e chame sua galera para o Concord.</p>
       </div>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row board:mt-0 board:flex-col board:gap-[13px]">
-        <input
-          ref={input}
-          readOnly
-          value={invite?.link ?? ""}
-          aria-label="Link de convite"
-          onFocus={(e) => e.target.select()}
-          className="min-w-0 flex-1 rounded-xl border border-line bg-card-item px-3 py-2.5 font-mono text-sm outline-none focus:border-line-strong board:h-11 board:flex-none board:py-0"
-        />
+      <div className="relative mt-3 flex flex-col gap-2 sm:flex-row board:mt-0 board:flex-col board:gap-[13px]">
+        <div className="flex min-w-0 flex-1 overflow-hidden rounded-xl border border-line bg-card-item focus-within:border-line-strong board:h-11 board:flex-none">
+          <input
+            ref={input}
+            readOnly
+            value={link ?? ""}
+            aria-label="Link de convite"
+            title={channelId ? "Convite do seu primeiro servidor. Vale por 7 dias." : "Endereço do Concord: você ainda não pode convidar para nenhum servidor."}
+            onFocus={(e) => e.target.select()}
+            className="min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm text-ellipsis outline-none board:py-0 board:pl-3.5 board:text-[15px]"
+          />
+          <button
+            type="button"
+            disabled={!link}
+            onClick={copy}
+            aria-label="Copiar o link do campo"
+            title="Copiar"
+            className="flex w-11 shrink-0 items-center justify-center bg-copy-tile text-ink-3 hover:text-ink disabled:opacity-50"
+          >
+            {copied ? <Check size={18} className="text-online" /> : <Copy size={18} />}
+          </button>
+        </div>
         <button
           type="button"
-          disabled={!invite}
+          disabled={!link}
           onClick={copy}
-          className={`flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 board:h-[43px] board:py-0 ${copied ? "bg-online text-sheet" : "bg-signal text-on-signal hover:brightness-110"}`}
+          className={`flex shrink-0 items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 board:h-[43px] board:py-0 board:text-base ${copied ? "bg-online text-sheet" : "fill-signal-btn text-on-signal hover:brightness-110"}`}
         >
-          {copied ? <Check size={15} /> : <Copy size={15} />}
+          {copied ? <Check size={18} aria-hidden /> : <Link2 size={18} aria-hidden />}
           {copied ? "Copiado" : "Copiar link"}
         </button>
       </div>
-      {copyFailed && <p className="mt-2 text-sm text-dnd">O navegador não deixou copiar. O link está selecionado: use Ctrl+C.</p>}
-      <ol className="mt-5 hidden space-y-3 text-sm text-ink-3 board:block">
-        {["Copie o link", "Mande para a galera", "Quem abrir já entra no servidor"].map((step, i) => (
-          <li key={step} className="flex items-center gap-2.5">
-            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-card-item text-xs font-bold text-signal-ink">{i + 1}</span>
-            {step}
-          </li>
-        ))}
-      </ol>
+      {copyFailed && <p className="relative mt-2 text-sm text-dnd">O navegador não deixou copiar. O link está selecionado: use Ctrl+C.</p>}
     </section>
   );
-}
-
-function inviteNote(guildName: string) {
-  return `Convite para o servidor ${guildName}. Vale por 7 dias.`;
 }

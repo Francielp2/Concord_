@@ -55,13 +55,6 @@
   --color-avatar-5: #be185d;
   --color-avatar-6: #0369a1;
   --color-avatar-7: #4b5563;
-  /* cores de marca nos quadradinhos de atividade: iguais em todos os temas */
-  --color-brand-youtube: #e60000;
-  --color-brand-spotify: #1ed760;
-  --color-brand-twitch: #9146ff;
-  --color-brand-netflix: #e50914;
-  --color-on-brand: #ffffff;
-  --color-on-brand-light: #0b0b0b;
   /* superfícies da grade do app: os temas claros apontam para o papel, o Preto tem valores próprios */
   --color-shell-rail-line: var(--color-line);
   --color-shell-top: var(--color-rail);
@@ -81,6 +74,10 @@
   --color-card-invite: var(--color-sheet);
   --color-card-suggest: var(--color-paper);
   --color-card-suggest-line: var(--color-line);
+  --color-suggest-btn: var(--color-signal);
+  --color-voice-btn: var(--color-paper-3);
+  --color-copy-tile: var(--color-paper-3);
+  --color-hero-veil: color-mix(in srgb, var(--color-paper-2) 96%, transparent);
 
   --font-sans: var(--ff-body);
   --font-display: var(--ff-display);
@@ -96,7 +93,6 @@
 [data-theme="beige"] {
   --color-backdrop-a: #efe6d6;
   --color-backdrop-b: #f7f0e4;
-  --banner-moon: #fff6e0;
   --color-paper: #f7f0e4;
   --color-paper-2: #f5eddd;
   --color-paper-3: #eadfca;
@@ -137,7 +133,6 @@
 [data-theme="default"] {
   --color-backdrop-a: #e6e0d3;
   --color-backdrop-b: #f4efe4;
-  --banner-moon: #fff3dc;
   --color-paper: #f6f2e9;
   --color-paper-2: #f4efe4;
   --color-paper-3: #e7e0d0;
@@ -178,7 +173,6 @@
 [data-theme="black"] {
   --color-backdrop-a: #0b0d14;
   --color-backdrop-b: #141a2c;
-  --banner-moon: #e3e7ff;
   --color-shell-rail-line: #1a1e2d;
   --color-shell-top: #0c0e16;
   --color-shell-field: #131624;
@@ -186,17 +180,21 @@
   --color-shell-right: #0c0d16;
   --color-shell-right-line: #191d2a;
   --color-shell-userbar: #10131e;
-  --color-shell-voice: #1e2132;
+  --color-shell-voice: #12141f;
   --color-nav-active: #32207c;
   --color-add-friend: #281654;
   --color-on-add-friend: #e8eaf2;
   --color-field: #1a1e2d;
-  --color-card-news: #211546;
+  --color-card-news: #1e1640;
   --color-card-roll: #0f121d;
   --color-card-item: #1a1e2e;
   --color-card-invite: #131522;
   --color-card-suggest: #171b2a;
   --color-card-suggest-line: #202536;
+  --color-suggest-btn: #431e95;
+  --color-voice-btn: #1e2132;
+  --color-copy-tile: #24283e;
+  --color-hero-veil: rgba(14, 16, 25, 0.55);
   --color-paper: #1c2131;
   --color-paper-2: #10131c;
   --color-paper-3: #252b40;
@@ -242,6 +240,9 @@
 }
 @utility shadow-pop {
   box-shadow: var(--elev-2);
+}
+@utility fill-signal-btn {
+  background: linear-gradient(90deg, color-mix(in srgb, var(--color-signal) 88%, #000), color-mix(in srgb, var(--color-signal) 88%, #fff));
 }
 @utility glow {
   box-shadow: var(--glow);

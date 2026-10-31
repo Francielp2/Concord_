@@ -1,34 +1,30 @@
 "use client";
 
 import { Gamepad2, Music, Play, Swords, Volume2, type LucideIcon } from "lucide-react";
-import { brandOf, liveActivity, type Activity, type ActivityKind, type Brand } from "@/lib/client/activity";
+import { brandOf, liveActivity, type Activity, type ActivityKind } from "@/lib/client/activity";
 import { displayName, statusOf, useStore } from "@/lib/client/store";
 import { Rel, canJoinVoice } from "@/lib/client/types";
+import { useWide } from "@/lib/client/useWide";
+import { BrandLogo } from "./BrandLogo";
 import { STATUS_PT, UserAvatar } from "./ui";
-
-const BRAND_TILE: Record<Brand, { Icon: LucideIcon; tone: string }> = {
-  youtube: { Icon: Play, tone: "bg-brand-youtube text-on-brand" },
-  spotify: { Icon: Music, tone: "bg-brand-spotify text-on-brand-light" },
-  twitch: { Icon: Play, tone: "bg-brand-twitch text-on-brand" },
-  netflix: { Icon: Play, tone: "bg-brand-netflix text-on-brand" },
-  game: { Icon: Gamepad2, tone: "bg-signal text-on-signal" },
-};
 
 // nome que não está na lista: o ícone genérico do que a pessoa disse que está fazendo
 const KIND_ICON: Record<ActivityKind, LucideIcon> = { game: Gamepad2, watch: Play, listen: Music, compete: Swords };
 
 export function ActivityTile({ activity }: { activity: Activity }) {
   const brand = brandOf(activity.name);
-  const { Icon, tone } = brand ? BRAND_TILE[brand] : { Icon: KIND_ICON[activity.kind], tone: "bg-signal text-on-signal" };
+  if (brand && brand !== "game") return <BrandLogo brand={brand} />;
+  const Icon = brand ? Gamepad2 : KIND_ICON[activity.kind];
   return (
-    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${tone}`} aria-hidden>
-      <Icon size={18} />
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-signal text-on-signal" aria-hidden>
+      <Icon size={20} />
     </span>
   );
 }
 
 export function RollingNow({ onDm, onJoin }: { onDm: (userId: string) => void; onJoin: (channelId: string) => void }) {
   const { state } = useStore();
+  const wide = useWide();
   const myCall = state.me ? liveActivity(state, state.me.id).call : null;
 
   // invisível continua fora daqui mesmo em chamada: a presença é que decide quem aparece
@@ -42,12 +38,14 @@ export function RollingNow({ onDm, onJoin }: { onDm: (userId: string) => void; o
 
   return (
     <aside aria-labelledby="rolling-now" className="flex flex-col rounded-2xl bg-card-roll p-2.5 board:h-[342px]" data-rolling-card>
-      <div className="px-1.5 py-2 board:h-[100px] board:shrink-0 board:py-3">
-        <h3 id="rolling-now" className="flex items-center gap-2 font-display text-xl font-extrabold">
-          <Play size={20} className="shrink-0 fill-online text-online" aria-hidden />
+      <div className="px-1.5 py-2 board:h-[88px] board:shrink-0 board:px-2 board:pb-0 board:pt-[14px]">
+        <h3 id="rolling-now" className="flex items-center gap-2 font-display text-xl font-extrabold board:gap-2.5 board:text-xl">
+          <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg bg-online text-sheet" aria-hidden>
+            <Play size={14} className="fill-current" />
+          </span>
           Rolando agora
         </h3>
-        <p className="mt-1 text-sm text-muted">Veja o que seus amigos estão fazendo.</p>
+        <p className="mt-1 text-sm text-muted board:mt-1.5 board:text-[15px]">Veja o que seus amigos estão fazendo.</p>
       </div>
 
       {cards.length ? (
@@ -62,19 +60,19 @@ export function RollingNow({ onDm, onJoin }: { onDm: (userId: string) => void; o
               <li
                 key={id}
                 data-activity-card
-                className="relative flex h-[68px] min-w-0 items-center gap-2.5 rounded-xl border border-line bg-card-item px-2.5 hover:border-line-strong"
+                className="relative flex h-[68px] min-w-0 items-center gap-2.5 rounded-xl border border-line bg-card-item px-2.5 hover:border-line-strong board:gap-3 board:border-transparent board:pl-3.5 board:pr-[11px]"
               >
                 {/* o botão cobre o cartão todo; o "Entrar" fica por cima dele, sem botão dentro de botão */}
                 <button
                   type="button"
                   aria-label={`Abrir conversa com ${name}: ${line}`}
                   onClick={() => onDm(id)}
-                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left after:absolute after:inset-0 after:rounded-xl after:content-['']"
+                  className="flex min-w-0 flex-1 items-center gap-2.5 rounded-lg text-left after:absolute after:inset-0 after:rounded-xl after:content-[''] board:gap-3"
                 >
-                  <UserAvatar user={user} size={38} status={status} ring="border-sheet" />
+                  <UserAvatar user={user} size={wide ? 46 : 38} status={status} ring="border-card-item" />
                   <span className="min-w-0 flex-1 leading-tight">
-                    <span className="block truncate text-sm font-semibold">{name}</span>
-                    <span className="mt-0.5 block truncate text-xs text-muted">{line}</span>
+                    <span className="block truncate text-sm font-semibold board:text-base">{name}</span>
+                    <span className="mt-0.5 block truncate text-xs text-muted board:text-sm">{line}</span>
                   </span>
                 </button>
                 {canJoin && (
@@ -90,8 +88,8 @@ export function RollingNow({ onDm, onJoin }: { onDm: (userId: string) => void; o
                 {live.activity ? (
                   <ActivityTile activity={live.activity} />
                 ) : live.call ? (
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-online text-sheet" aria-hidden>
-                    <Volume2 size={18} />
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-online text-sheet" aria-hidden>
+                    <Volume2 size={20} />
                   </span>
                 ) : null}
               </li>

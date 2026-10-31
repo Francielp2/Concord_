@@ -6,6 +6,7 @@ import {
   ChevronDown,
   FolderPlus,
   Hash,
+  Lightbulb,
   LogOut,
   Megaphone,
   MessagesSquare,
@@ -13,13 +14,13 @@ import {
   Plus,
   Search,
   Settings,
-  Sparkles,
   Trash2,
   UserPlus,
   Users,
   Volume2,
   X,
 } from "lucide-react";
+import { liveActivity } from "@/lib/client/activity";
 import { callStartedAt, displayName, dmName, isUnread, mentionCount, statusOf, useStore } from "@/lib/client/store";
 import { Perm, hasPerm, type ApiChannel, type ApiGuild } from "@/lib/client/types";
 import { useWide } from "@/lib/client/useWide";
@@ -27,7 +28,7 @@ import { personPrefs, useVoicePrefs } from "@/lib/client/voicePrefs";
 import { canOpenGuildSettings } from "./GuildSettings";
 import { CallTimer } from "./voice/CallTimer";
 import { PersonControls } from "./voice/PersonControls";
-import { UserAvatar } from "./ui";
+import { STATUS_PT, UserAvatar } from "./ui";
 
 const NEWS_KEY = "concord:news-screen-audio-dismissed";
 
@@ -342,19 +343,19 @@ export function HomeSidebar({
       <div className="scroll-thin flex-1 overflow-y-auto px-2 pt-2 board:pl-4 board:pr-[14px] board:pt-5">
         <button
           onClick={onFriends}
-          className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-[15px] font-semibold board:h-[46px] board:rounded-xl board:px-3 board:py-0 ${
+          className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-[15px] font-semibold board:h-[46px] board:rounded-xl board:px-3.5 board:py-0 board:text-lg ${
             view === null ? "bg-paper-3 text-ink board:bg-nav-active" : "text-muted hover:bg-paper-3/60 hover:text-ink"
           }`}
         >
-          <Users size={20} />
+          <Users size={wide ? 24 : 20} />
           Amigos
           {!!pending && <span className="ml-auto rounded-full bg-signal px-1.5 text-[11px] font-bold tabular-nums text-on-signal">{pending}</span>}
         </button>
 
-        <div className="mt-4 flex items-center justify-between px-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted board:mt-0 board:h-[63px]">
-          Mensagens diretas
-          <button aria-label="Nova conversa" onClick={onNewDm} className="hover:text-ink">
-            <Plus size={15} />
+        <div className="mt-4 flex items-center justify-between px-2 text-[15px] font-medium text-muted board:mt-0 board:h-[55px] board:pl-[13px] board:pr-2 board:pt-[10px]">
+          Mensagens Diretas
+          <button aria-label="Nova conversa" onClick={onNewDm} className="text-ink-3 hover:text-ink">
+            <Plus size={wide ? 20 : 15} />
           </button>
         </div>
         <ul className="mt-1 space-y-px board:mt-0 board:space-y-0">
@@ -368,19 +369,21 @@ export function HomeSidebar({
               <li key={c.id}>
                 <button
                   onClick={() => onDm(c.id)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left board:h-[61px] board:py-0 ${active ? "bg-paper-3" : "hover:bg-paper-3/60"}`}
+                  className={`flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left board:h-[61px] board:pl-[13px] board:py-0 ${active ? "bg-paper-3" : "hover:bg-paper-3/60"}`}
                 >
                   <UserAvatar
                     user={u}
                     size={wide ? 42 : 32}
                     status={c.type === 1 && u ? statusOf(state, u.id) : undefined}
-                    ring={active ? "border-paper-3" : "border-paper-2"}
+                    ring={active ? "border-paper-3" : "border-shell-side"}
                   />
                   <span className="min-w-0 flex-1 leading-tight">
-                    <span className={`block truncate text-[15px] ${unread || active ? "font-semibold text-ink" : "text-ink-3"}`}>
+                    <span className={`block truncate text-[15px] board:text-base ${unread || active ? "font-semibold text-ink" : "font-medium text-ink-2"}`}>
                       {dmName(state, c)}
                     </span>
-                    {c.type === 3 && <span className="block truncate text-xs text-muted">{(c.recipients?.length ?? 0) + 1} pessoas</span>}
+                    <span className="block truncate text-xs text-muted board:text-sm">
+                      {c.type === 3 ? `${(c.recipients?.length ?? 0) + 1} pessoas` : u ? (liveActivity(state, u.id).line ?? STATUS_PT[statusOf(state, u.id)]) : ""}
+                    </span>
                   </span>
                   {!!mentions && !active && (
                     <span className="rounded-full bg-signal px-1.5 text-[11px] font-bold tabular-nums text-on-signal">{mentions}</span>
@@ -393,12 +396,12 @@ export function HomeSidebar({
         </ul>
       </div>
       {!newsSeen && (
-        <div className="relative mx-2 mb-2 shrink-0 rounded-xl border border-line bg-card-news p-3 pr-8 shadow-soft board:mb-4 board:ml-[13px] board:mr-0 board:h-[112px] board:w-[252px] board:rounded-[14px] board:p-4 board:pr-9">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-signal-ink board:text-sm">
-            <Sparkles size={13} className="shrink-0" aria-hidden />
+        <div className="relative mx-2 mb-2 shrink-0 rounded-xl border border-signal/40 bg-card-news p-3 pr-8 shadow-soft board:mb-4 board:ml-[13px] board:mr-0 board:h-[112px] board:w-[252px] board:rounded-[14px] board:pb-0 board:pl-[15px] board:pr-5 board:pt-2.5">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-signal-ink board:gap-2.5 board:text-base board:text-ink">
+            <Lightbulb size={wide ? 18 : 13} className="shrink-0 fill-signal-ink text-signal-ink" aria-hidden />
             Novidade no Concord
           </p>
-          <p className="mt-1 text-xs leading-snug text-ink-3 board:mt-1.5 board:text-[13px]">Compartilhamento de tela com melhor qualidade e áudio do sistema</p>
+          <p className="mt-1 text-xs leading-snug text-ink-3 board:mt-1 board:text-[15px] board:leading-5">Compartilhamento de tela com melhor qualidade e áudio do sistema!</p>
           <button
             type="button"
             aria-label="Dispensar novidade"

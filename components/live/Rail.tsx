@@ -33,7 +33,7 @@ function Item({
         aria-label={label}
         title={label}
         onClick={onClick}
-        className={`relative flex h-12 w-12 items-center justify-center rounded-[15px] duration-150 hover:scale-105 ${
+        className={`relative flex h-12 w-12 items-center justify-center rounded-[15px] duration-150 hover:scale-105 board:h-[52px] board:w-[52px] ${
           active ? "ring-2 ring-signal ring-offset-2 ring-offset-rail" : ""
         }`}
       >
@@ -53,7 +53,11 @@ export function Rail({ active, onSelect, onAdd }: { active: string; onSelect: (i
   const dmMentions = Object.values(state.dms).reduce((n, c) => n + mentionCount(state, c.id), 0);
 
   return (
-    <nav className="scroll-ink flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-rail py-3 board:-mt-[69px] board:w-[85px] board:border-r board:border-shell-rail-line">
+    <nav className="scroll-ink flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-rail py-3 board:-mt-[69px] board:w-[85px] board:gap-[9px] board:border-r board:border-shell-rail-line board:pt-[13px]">
+      {/* a marca fica no alto do quadro; o botão de início vem logo abaixo */}
+      <span className="mb-[10px] hidden h-[52px] w-[52px] shrink-0 items-center justify-center rounded-[15px] bg-rail-2 board:flex" aria-hidden>
+        <LogoMark size={34} stroke="var(--color-signal-ink)" />
+      </span>
       <Item active={active === "home"} label="Mensagens diretas" onClick={() => onSelect("home")} badge={dmMentions}>
         <span
           className={`flex h-full w-full items-center justify-center rounded-[inherit] transition-colors ${
@@ -64,7 +68,7 @@ export function Rail({ active, onSelect, onAdd }: { active: string; onSelect: (i
         </span>
       </Item>
 
-      <span className="my-1 h-0.5 w-8 rounded bg-rail-3" />
+      <span className="my-1 h-0.5 w-8 rounded bg-rail-3 board:-mt-0.5 board:mb-0 board:h-0 board:bg-transparent" />
 
       {state.guildOrder.map((id) => {
         const g = state.guilds[id];

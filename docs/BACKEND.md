@@ -146,7 +146,7 @@ Threads usam `CHANNEL_CREATE`/`CHANNEL_UPDATE`/`CHANNEL_DELETE` com `type: 11`.
 | GET | `/users/@me` | com e-mail |
 | PATCH | `/users/@me` | `username`, `global_name`, `avatar` (URL https ou arquivo enviado), `bio`, `new_password`; trocar username/senha exige `password` |
 | GET | `/users/search?q=` | até 8 pessoas cujo usuário ou nome de exibição começa com `q` (mínimo 2 caracteres). Só id, usuário, nome e foto; quem bloqueou você não aparece |
-| GET | `/users/search?suggest=1` | sugestões de amizade: até 24 pessoas, das mais novas, com quem não há amizade, pedido nem bloqueio. Mesmos campos e mesmo limite da busca |
+| GET | `/users/search?suggest=1` | sugestões de amizade: até 24 pessoas sem amizade, pedido nem bloqueio com você. Vêm primeiro as de servidores em comum, depois as com amigos em comum, e as contas mais novas completam. Mesmos campos da busca mais `mutual_friends` (só o número) e mesmo limite |
 | POST | `/users/@me/avatar` | multipart `image` (PNG, JPEG, GIF ou WebP, até 4 MB). Devolve `{ url }`, que passa a valer no PATCH. Sem Blob, fica junto das imagens do servidor mais antigo da pessoa |
 | GET | `/users/{id}` | perfil público |
 | GET | `/users/@me/guilds` | lista resumida + permissões |

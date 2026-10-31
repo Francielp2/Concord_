@@ -5,6 +5,7 @@ import { AnimatePresence } from "framer-motion";
 import { Headphones, HeadphoneOff, Mic, MicOff, Settings } from "lucide-react";
 import { customStatusText } from "@/lib/client/activity";
 import { displayName, statusOf, useStore } from "@/lib/client/store";
+import { useWide } from "@/lib/client/useWide";
 import { UserMenu } from "./UserMenu";
 import { STATUS_PT, UserAvatar } from "./ui";
 
@@ -29,32 +30,33 @@ export function UserBar({
   const [menu, setMenu] = useState(false);
   const closeMenu = useCallback(() => setMenu(false), []);
   const bar = useRef<HTMLDivElement>(null);
+  const wide = useWide();
   const me = state.me;
   const btn = "flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 hover:bg-paper-3 hover:text-ink";
 
   return (
-    <div ref={bar} className="relative flex min-h-[58px] shrink-0 items-center gap-1 border-t border-line bg-shell-userbar px-2 pb-[env(safe-area-inset-bottom)] board:h-[81px] board:border-0">
+    <div ref={bar} className="relative flex min-h-[58px] shrink-0 items-center gap-1 border-t border-line bg-shell-userbar px-2 pb-[env(safe-area-inset-bottom)] board:h-[81px] board:border-0 board:pb-1 board:pl-[15px] board:pr-[15px]">
       <AnimatePresence>
         {menu && <UserMenu anchor={bar} className="bottom-[62px] left-2" onClose={closeMenu} onActivity={onActivity} onInstallHelp={onInstallHelp} />}
       </AnimatePresence>
 
       <button onClick={() => setMenu((v) => !v)} aria-expanded={menu} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left hover:bg-paper-3">
-        <UserAvatar user={me ?? undefined} size={34} status={me ? statusOf(state, me.id) : undefined} ring="border-paper-3" />
+        <UserAvatar user={me ?? undefined} size={wide ? 36 : 34} status={me ? statusOf(state, me.id) : undefined} ring="border-shell-userbar" />
         <span className="min-w-0 leading-tight">
-          <span className="block truncate text-sm font-semibold">{displayName(me)}</span>
-          <span className="block truncate text-xs text-muted">
+          <span className="block truncate text-sm font-semibold board:text-[15px]">{displayName(me)}</span>
+          <span className="block truncate text-xs text-muted board:mt-0.5 board:text-[13px]">
             {state.conn === "ready" ? (customStatusText(state.myCustomStatus) ?? STATUS_PT[state.myStatus]) : "Reconectando…"}
           </span>
         </span>
       </button>
       <button className={btn} aria-label={muted ? "Ativar microfone" : "Silenciar"} onClick={onMute}>
-        {muted ? <MicOff size={18} className="text-dnd" /> : <Mic size={18} />}
+        {muted ? <MicOff size={wide ? 20 : 18} className="text-dnd" /> : <Mic size={wide ? 20 : 18} />}
       </button>
       <button className={btn} aria-label={deaf ? "Voltar a ouvir" : "Ensurdecer"} onClick={onDeaf}>
-        {deaf ? <HeadphoneOff size={18} className="text-dnd" /> : <Headphones size={18} />}
+        {deaf ? <HeadphoneOff size={wide ? 20 : 18} className="text-dnd" /> : <Headphones size={wide ? 20 : 18} />}
       </button>
       <button className={btn} aria-label="Configurações" onClick={onSettings}>
-        <Settings size={18} />
+        <Settings size={wide ? 20 : 18} />
       </button>
     </div>
   );

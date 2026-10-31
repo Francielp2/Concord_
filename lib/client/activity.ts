@@ -39,14 +39,15 @@ export function customStatusText(raw: string | null | undefined) {
   return activity ? activityLine(activity) : text;
 }
 
-export type Brand = "youtube" | "spotify" | "twitch" | "netflix" | "game";
+export type Brand = "valorant" | "youtube" | "spotify" | "twitch" | "netflix" | "game";
 
 const BRANDS: [Brand, string[]][] = [
   ["youtube", ["youtube"]],
   ["spotify", ["spotify"]],
   ["twitch", ["twitch"]],
   ["netflix", ["netflix"]],
-  ["game", ["valorant", "minecraft", "lol", "league of legends", "cs2", "fortnite"]],
+  ["valorant", ["valorant"]],
+  ["game", ["minecraft", "lol", "league of legends", "cs2", "fortnite"]],
 ];
 
 // palavra inteira: "lol" não pode reconhecer "Lollapalooza"

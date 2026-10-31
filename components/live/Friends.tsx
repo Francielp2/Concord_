@@ -2,24 +2,25 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Ban, Check, Menu, MessageCircle, Search, UserMinus, Users, X } from "lucide-react";
+import { Ban, Check, Menu, MessageCircle, Search, UserMinus, UserPlus, X } from "lucide-react";
 import { liveActivity } from "@/lib/client/activity";
 import { api } from "@/lib/client/api";
 import { displayName, statusOf, useStore } from "@/lib/client/store";
 import { Rel, type ApiRelationship } from "@/lib/client/types";
-import { AddFriendTab, InviteCard } from "./AddFriendTab";
+import { AddFriendTab, FRIEND_SEARCH_ID, InviteCard } from "./AddFriendTab";
 import { FriendsBanner } from "./FriendsBanner";
 import { RollingNow } from "./RollingNow";
 import { STATUS_PT, UserAvatar } from "./ui";
 
 const TABS = [
+  { id: "add", label: "Amigos" },
   { id: "online", label: "Online" },
   { id: "all", label: "Todos" },
   { id: "pending", label: "Pendentes" },
   { id: "blocked", label: "Bloqueados" },
 ] as const;
 
-export type FriendsTab = (typeof TABS)[number]["id"] | "add";
+export type FriendsTab = (typeof TABS)[number]["id"];
 
 export function Friends({
   tab,
@@ -62,7 +63,7 @@ export function Friends({
     // abaixo do quadro rola tudo junto e a coluna direita vira uma seção no fim; no quadro cada coluna rola sozinha
     <section className="scroll-thin flex min-w-0 flex-1 flex-col overflow-y-auto bg-sheet board:flex-row board:overflow-hidden">
       <div className="shrink-0 board:flex board:min-w-0 board:flex-1 board:shrink board:flex-col">
-      <header className="sticky top-0 z-10 flex min-h-14 shrink-0 items-center gap-3 border-b border-line bg-sheet px-3 board:relative board:h-[65px] board:min-h-[65px]">
+      <header className="sticky top-0 z-10 flex min-h-14 shrink-0 items-center gap-3 border-b border-line bg-sheet px-3 board:relative board:h-[65px] board:min-h-[65px] board:pl-[41px]">
           <button
             className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 hover:bg-paper-2 md:hidden"
             aria-label="Abrir menu"
@@ -70,26 +71,21 @@ export function Friends({
           >
             <Menu size={20} />
           </button>
-          <span className="flex items-center gap-2 font-display font-bold">
-            <Users size={20} className="text-muted" />
-            Amigos
-          </span>
-          <span className="h-5 w-px bg-line" />
-          <nav className="scroll-ink flex items-center gap-1 overflow-x-auto" role="tablist">
+          <nav className="scroll-ink flex items-center gap-1 overflow-x-auto board:h-full board:gap-[27px] board:overflow-visible" role="tablist">
             {TABS.map((t) => (
               <button
                 key={t.id}
                 role="tab"
                 aria-selected={tab === t.id}
                 onClick={() => onTab(t.id)}
-                className={`relative whitespace-nowrap rounded-lg px-2.5 py-1 text-[15px] font-medium ${
-                  tab === t.id ? "text-ink" : "text-muted hover:bg-paper-2 hover:text-ink"
+                className={`relative whitespace-nowrap rounded-lg px-2.5 py-1 text-[15px] font-medium board:flex board:h-full board:items-center board:rounded-none board:pt-2 board:text-base ${
+                  tab === t.id ? "font-semibold text-ink" : "text-muted hover:text-ink"
                 }`}
               >
                 {tab === t.id && (
                   <motion.span
                     layoutId="live-friends-tab"
-                    className="absolute inset-0 rounded-lg bg-paper-2"
+                    className="absolute inset-x-0 bottom-0 h-[3px] rounded-full bg-gradient-to-r from-signal to-signal-ink"
                     transition={{ type: "spring", stiffness: 500, damping: 36 }}
                   />
                 )}
@@ -102,11 +98,13 @@ export function Friends({
               </button>
             ))}
             <button
-              onClick={() => onTab("add")}
-              className={`whitespace-nowrap rounded-lg bg-add-friend px-2.5 py-1 text-[15px] font-semibold text-on-add-friend hover:brightness-110 board:h-[38px] board:rounded-xl board:px-4 board:absolute board:left-[573px] board:top-4 board:w-[181px] ${
-                tab === "add" ? "ring-2 ring-inset ring-signal-ink" : ""
-              }`}
+              onClick={() => {
+                onTab("add");
+                requestAnimationFrame(() => document.getElementById(FRIEND_SEARCH_ID)?.focus());
+              }}
+              className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-lg border border-signal/40 bg-add-friend px-2.5 py-1 text-[15px] font-semibold text-on-add-friend hover:brightness-110 board:absolute board:left-[573px] board:top-4 board:h-[38px] board:w-[181px] board:justify-center board:gap-2 board:rounded-xl board:px-0"
             >
+              <UserPlus size={16} className="shrink-0" aria-hidden />
               Adicionar amigo
             </button>
           </nav>

@@ -214,8 +214,8 @@ export function VoicePanel({
                 : `Áudio ligado • ${people.length} na sala`;
 
   const btn = (on: boolean) =>
-    `flex h-8 flex-1 items-center justify-center rounded-lg border board:h-[42px] ${
-      on ? "border-signal bg-signal text-on-signal" : "border-line text-ink-3 hover:border-line-strong hover:text-ink"
+    `flex h-8 flex-1 items-center justify-center rounded-lg border board:h-[37px] board:rounded-[10px] ${
+      on ? "border-signal bg-signal text-on-signal" : "border-line text-ink-3 hover:border-line-strong hover:text-ink board:border-transparent board:bg-voice-btn"
     } disabled:opacity-40`;
 
   async function toggleCamera() {
@@ -274,14 +274,22 @@ export function VoicePanel({
         )}
       {slot &&
         createPortal(
-          <div className="flex flex-col justify-end border-t border-line bg-shell-voice px-2 py-2 board:min-h-[114px] board:border-0 board:px-3 board:pb-[15px]">
+          <div className="flex flex-col justify-end border-t border-line bg-shell-voice px-2 py-2 board:mx-[11px] board:min-h-[114px] board:rounded-[14px] board:border board:px-2 board:pb-[14px]">
             {alerts}
             <div className="mb-1.5 flex items-start gap-1.5 px-1">
-              <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${live ? "bg-online" : "bg-faint"}`} aria-hidden />
               <span className="min-w-0 flex-1 leading-tight">
-                <span className={`block text-xs ${live ? "font-semibold text-online" : "text-muted"}`}>{statusText}</span>
+                <span className={`block text-xs board:text-[15px] ${live ? "font-semibold text-ink" : "text-muted"}`}>
+                  <span className={`mr-1.5 inline-block h-2 w-2 rounded-full align-[1px] ${live ? "bg-online" : "bg-faint"}`} aria-hidden />
+                  {live && statusText.includes(" • ") ? (
+                    <>
+                      <span className="text-online">{statusText.split(" • ")[0]}</span> • {statusText.split(" • ")[1]}
+                    </>
+                  ) : (
+                    statusText
+                  )}
+                </span>
                 {channel && (
-                  <span className="flex items-center gap-1.5 text-xs text-muted">
+                  <span className="flex items-center gap-1.5 text-xs text-muted board:mt-0.5 board:text-sm">
                     <span className="min-w-0 truncate">
                       {channel.name} / {guild?.name}
                     </span>
@@ -290,7 +298,7 @@ export function VoicePanel({
                 )}
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1.5 board:items-end">
               <button className={btn(call.camera)} disabled={!live} onClick={toggleCamera} aria-label={call.camera ? "Desligar câmera" : "Ligar câmera"}>
                 {call.camera ? <VideoOff size={16} /> : <Video size={16} />}
               </button>
@@ -307,7 +315,7 @@ export function VoicePanel({
               <button className={btn(open)} disabled={!live} onClick={() => setOpen((v) => !v)} aria-label={open ? "Esconder chamada" : "Ver chamada"}>
                 {open ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               </button>
-              <LeaveButton onLeave={onLeave} className="md:h-8 board:h-[42px]" />
+              <LeaveButton onLeave={onLeave} label="compact" className="md:h-8 board:ml-3 board:h-[42px] board:w-12 board:px-0" />
             </div>
             {screenSupport !== "ok" && <p className="mt-1.5 px-1 text-[11px] leading-snug text-muted">{SCREEN_SHARE_MESSAGE[screenSupport]}</p>}
           </div>,
