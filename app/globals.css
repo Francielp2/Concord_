@@ -33,6 +33,25 @@
   --color-channel-active: #e2d9c6;
   --color-mention: #e9b44c;
   --color-shadow: #191714;
+  /* linhas e barra de servidores, que cada tema redefine */
+  --color-line: rgba(25, 23, 20, 0.15);
+  --color-line-strong: #191714;
+  --color-rail: #191714;
+  --color-rail-2: #2a2723;
+  --color-rail-3: #3a3631;
+  --color-on-rail: #faf7f0;
+  --color-on-chrome-muted: #cfc9bd;
+  --color-danger: #c4291c;
+  --color-on-danger: #ffffff;
+  /* fundos de avatar sem foto: todos legíveis com a inicial clara */
+  --color-on-avatar: #fffdf8;
+  --color-avatar-1: #c2410c;
+  --color-avatar-2: #0f766e;
+  --color-avatar-3: #a16207;
+  --color-avatar-4: #6d28d9;
+  --color-avatar-5: #be185d;
+  --color-avatar-6: #0369a1;
+  --color-avatar-7: #4b5563;
 
   --font-sans: var(--ff-body);
   --font-display: var(--ff-display);
@@ -43,33 +62,162 @@
   --shadow-hard-sm: 2px 2px 0 0 var(--color-shadow);
 }
 
-/* Fundo preto (opção do usuário). Papel e tinta invertem; como "ink" também é texto,
-   tudo que usa os tokens acompanha sem mudar nenhum componente. */
-[data-theme="black"] {
-  --color-paper: #000;
-  --color-paper-2: #000;
-  --color-paper-3: #1c1c1c;
-  --color-sheet: #000;
-  --color-ink: #f2efe8;
-  --color-ink-2: #e6e2da;
-  --color-ink-3: #cfcac0;
-  --color-muted: #a8a296;
-  --color-faint: #918b80;
-  --color-signal-ink: #ff7a55;
-  --color-online: #3fbf72;
-  --color-dnd: #f0645a;
-  --color-chrome: #000;
-  --color-chrome-2: #1c1c1c;
-  --color-chrome-3: #2e2e2e;
-  --color-on-chrome: #f2efe8;
-  --color-scrim: #000;
-  --color-on-signal: #000;
-  --color-channel-active: #1c1c1c;
-  --color-shadow: #3a3a3a;
+/* Temas do app (Configurações > Aparência). Definem só variáveis: os componentes usam os
+   tokens e acompanham sem mudar nada. Fora do app (site, login) vale o @theme acima. */
+[data-theme="beige"] {
+  --color-backdrop-a: #efe6d6;
+  --color-backdrop-b: #f7f0e4;
+  --color-paper: #f7f0e4;
+  --color-paper-2: #f5eddd;
+  --color-paper-3: #eadfca;
+  --color-sheet: #fbf6ec;
+  --color-ink: #2b2118;
+  --color-ink-2: #35291e;
+  --color-ink-3: #4b3c2d;
+  --color-muted: #66574a;
+  --color-faint: #6e5f50;
+  --color-line: rgba(43, 33, 24, 0.12);
+  --color-line-strong: rgba(43, 33, 24, 0.3);
+  --color-signal: #8a5a2b;
+  --color-signal-ink: #744a22;
+  --color-on-signal: #fbf6ec;
+  --color-channel-active: #eadfca;
+  --color-mention: #b9812f;
+  --color-online: #256b42;
+  --color-idle: #a86f1a;
+  --color-dnd: #ad3226;
+  --color-danger: #bf2a1e;
+  --color-on-danger: #ffffff;
+  --color-rail: #efe6d6;
+  --color-rail-2: #e3d6bf;
+  --color-rail-3: #d8c9ae;
+  --color-on-rail: #2b2118;
+  --color-chrome: #2b2118;
+  --color-chrome-2: #3a2d21;
+  --color-chrome-3: #4c3c2c;
+  --color-on-chrome: #fbf6ec;
+  --color-on-chrome-muted: #d3c6b5;
+  --color-scrim: #2b2118;
+  --elev-1: 0 1px 2px rgba(43, 33, 24, 0.06), 0 4px 12px rgba(43, 33, 24, 0.06);
+  --elev-2: 0 12px 32px rgba(43, 33, 24, 0.18);
+  --glow: none;
+  --backdrop: linear-gradient(135deg, var(--color-backdrop-a), var(--color-backdrop-b));
 }
-/* com papel preto, o hover de papel sobre papel sumiria */
-[data-theme="black"] [class*="hover:bg-paper"]:hover {
-  background-color: #1c1c1c;
+
+[data-theme="default"] {
+  --color-backdrop-a: #e6e0d3;
+  --color-backdrop-b: #f4efe4;
+  --color-paper: #f6f2e9;
+  --color-paper-2: #f4efe4;
+  --color-paper-3: #e7e0d0;
+  --color-sheet: #fffdf8;
+  --color-ink: #191714;
+  --color-ink-2: #2a2723;
+  --color-ink-3: #3a3631;
+  --color-muted: #5f584d;
+  --color-faint: #686156;
+  --color-line: rgba(25, 23, 20, 0.12);
+  --color-line-strong: rgba(25, 23, 20, 0.32);
+  --color-signal: #d33c0d;
+  --color-signal-ink: #b5330a;
+  --color-on-signal: #ffffff;
+  --color-channel-active: #e7e0d0;
+  --color-mention: #d9941f;
+  --color-online: #196c3b;
+  --color-idle: #a86f1a;
+  --color-dnd: #b02e23;
+  --color-danger: #c4291c;
+  --color-on-danger: #ffffff;
+  --color-rail: #191714;
+  --color-rail-2: #2a2723;
+  --color-rail-3: #3a3631;
+  --color-on-rail: #faf7f0;
+  --color-chrome: #191714;
+  --color-chrome-2: #2a2723;
+  --color-chrome-3: #3a3631;
+  --color-on-chrome: #faf7f0;
+  --color-on-chrome-muted: #cfc9bd;
+  --color-scrim: #191714;
+  --elev-1: 0 1px 2px rgba(25, 23, 20, 0.06), 0 4px 12px rgba(25, 23, 20, 0.06);
+  --elev-2: 0 12px 32px rgba(25, 23, 20, 0.18);
+  --glow: none;
+  --backdrop: linear-gradient(135deg, var(--color-backdrop-a), var(--color-backdrop-b));
+}
+
+[data-theme="black"] {
+  --color-backdrop-a: #0b0d14;
+  --color-backdrop-b: #141a2c;
+  --color-paper: #1c2131;
+  --color-paper-2: #10131c;
+  --color-paper-3: #252b40;
+  --color-sheet: #151926;
+  --color-ink: #e8eaf2;
+  --color-ink-2: #dfe2ec;
+  --color-ink-3: #c3c8d8;
+  --color-muted: #9aa1b6;
+  --color-faint: #959cb2;
+  --color-line: rgba(255, 255, 255, 0.06);
+  --color-line-strong: rgba(255, 255, 255, 0.16);
+  --color-signal: #4a66ff;
+  --color-signal-ink: #93a5ff;
+  --color-on-signal: #ffffff;
+  --color-channel-active: #262f58;
+  --color-mention: #4a66ff;
+  --color-online: #3fbf72;
+  --color-idle: #e9b44c;
+  --color-dnd: #f4746b;
+  --color-danger: #dc2626;
+  --color-on-danger: #ffffff;
+  --color-rail: #0b0d14;
+  --color-rail-2: #1c2131;
+  --color-rail-3: #252b40;
+  --color-on-rail: #e8eaf2;
+  --color-chrome: #0b0d14;
+  --color-chrome-2: #1c2131;
+  --color-chrome-3: #2c3350;
+  --color-on-chrome: #e8eaf2;
+  --color-on-chrome-muted: #a6adc2;
+  --color-scrim: #05060a;
+  --color-shadow: #000;
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 12px rgba(0, 0, 0, 0.25);
+  --elev-2: 0 16px 40px rgba(0, 0, 0, 0.55);
+  --glow: 0 0 18px color-mix(in srgb, var(--color-signal) 45%, transparent);
+  --backdrop:
+    radial-gradient(1100px 600px at 12% -10%, color-mix(in srgb, var(--color-signal) 18%, transparent), transparent),
+    linear-gradient(135deg, var(--color-backdrop-a), var(--color-backdrop-b));
+}
+
+@utility shadow-soft {
+  box-shadow: var(--elev-1);
+}
+@utility shadow-pop {
+  box-shadow: var(--elev-2);
+}
+@utility glow {
+  box-shadow: var(--glow);
+}
+
+/* fundo em volta do contêiner do app */
+.app-backdrop {
+  background: var(--backdrop);
+}
+html[data-theme],
+html[data-theme] body {
+  background: var(--color-backdrop-a);
+}
+
+/* resposta curta em hover e seleção, foco sempre visível (com :where, qualquer classe ganha) */
+[data-theme] :where(button, a, input, textarea, select, label) {
+  transition:
+    color 150ms,
+    background-color 150ms,
+    border-color 150ms,
+    box-shadow 150ms,
+    opacity 150ms;
+}
+[data-theme] :where(button, a, summary, input[type="range"], input[type="color"]):focus-visible {
+  outline: 2px solid var(--color-signal-ink);
+  outline-offset: 2px;
 }
 
 html,
@@ -120,5 +268,8 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .marquee {
     animation: none;
+  }
+  [data-theme] :where(button, a, input, textarea, select, label) {
+    transition: none;
   }
 }

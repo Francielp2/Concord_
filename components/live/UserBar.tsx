@@ -30,7 +30,7 @@ export function UserBar({
   const [menu, setMenu] = useState(false);
   const install = useInstallMode();
   const me = state.me;
-  const btn = "flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:bg-paper-3 hover:text-ink";
+  const btn = "flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 hover:bg-paper-3 hover:text-ink";
 
   async function pick(status: Status) {
     setMenu(false);
@@ -44,20 +44,20 @@ export function UserBar({
   }
 
   return (
-    <div className="relative flex min-h-[58px] shrink-0 items-center gap-1 border-t border-ink/15 bg-paper-3/60 px-2 pb-[env(safe-area-inset-bottom)]">
+    <div className="relative flex min-h-[58px] shrink-0 items-center gap-1 border-t border-line bg-paper-3/60 px-2 pb-[env(safe-area-inset-bottom)]">
       <AnimatePresence>
         {menu && (
           <motion.div
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 6 }}
-            className="absolute bottom-[62px] left-2 z-50 w-56 rounded-xl border border-ink bg-sheet p-1.5 shadow-hard"
+            className="absolute bottom-[62px] left-2 z-50 w-56 rounded-xl border border-line-strong bg-sheet p-1.5 shadow-pop"
           >
             {CHOICES.map((s) => (
               <button
                 key={s}
                 onClick={() => pick(s)}
-                className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-paper-2 ${
+                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-paper-2 ${
                   state.myStatus === s ? "font-semibold" : ""
                 }`}
               >
@@ -65,7 +65,7 @@ export function UserBar({
                 {STATUS_PT[s]}
               </button>
             ))}
-            <span className="my-1 block h-px bg-ink/15" />
+            <span className="my-1 block h-px bg-line" />
             {install && (
               <button
                 onClick={() => {
@@ -73,19 +73,19 @@ export function UserBar({
                   if (install === "prompt") promptInstall().catch(() => {});
                   else onInstallHelp();
                 }}
-                className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-paper-2"
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-paper-2"
               >
                 <Download size={15} /> Instalar o app
               </button>
             )}
-            <button onClick={logout} className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm text-dnd hover:bg-dnd/10">
+            <button onClick={logout} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-dnd hover:bg-dnd/10">
               <LogOut size={15} /> Sair da conta
             </button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      <button onClick={() => setMenu((v) => !v)} className="flex min-w-0 flex-1 items-center gap-2 rounded-md px-1 py-1 text-left hover:bg-paper-3">
+      <button onClick={() => setMenu((v) => !v)} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left hover:bg-paper-3">
         <UserAvatar user={me ?? undefined} size={34} status={me ? statusOf(state, me.id) : undefined} ring="border-paper-3" />
         <span className="min-w-0 leading-tight">
           <span className="block truncate text-sm font-semibold">{displayName(me)}</span>

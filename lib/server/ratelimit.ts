@@ -41,6 +41,7 @@ export const Limits = {
   reaction: [20, 10],
   upload: [20, 60],
   friendRequest: [20, 3600],
+  userSearch: [60, 60],
   inviteCreate: [20, 600],
   guildCreate: [10, 3600],
   webhookExecute: [30, 60],

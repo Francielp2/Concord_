@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronDown,
@@ -27,7 +27,7 @@ import { CallTimer } from "./voice/CallTimer";
 import { PersonControls } from "./voice/PersonControls";
 import { UserAvatar } from "./ui";
 
-const shell = "flex w-60 shrink-0 flex-col bg-paper-2";
+const shell = "flex w-60 shrink-0 flex-col border-r border-line bg-paper-2 lg:w-64";
 
 export function GuildSidebar({
   guild,
@@ -39,6 +39,8 @@ export function GuildSidebar({
   onCreateChannel,
   onLeave,
   onSettings,
+  membersOpen,
+  onToggleMembers,
   footer,
 }: {
   guild: ApiGuild;
@@ -50,15 +52,25 @@ export function GuildSidebar({
   onCreateChannel: (parentId: string | null, type: 0 | 2 | 4) => void;
   onLeave: () => void;
   onSettings: () => void;
+  membersOpen: boolean;
+  onToggleMembers: () => void;
   footer: React.ReactNode;
 }) {
-  const { state } = useStore();
+  const { state, loadMembers } = useStore();
   const [closed, setClosed] = useState<Record<string, boolean>>({});
   const [menu, setMenu] = useState(false);
   const [voiceMenu, setVoiceMenu] = useState<string | null>(null);
   const prefs = useVoicePrefs();
   const canManage = hasPerm(guild.permissions, Perm.MANAGE_CHANNELS);
   const isOwner = guild.owner_id === state.me?.id;
+
+  // online só com a lista carregada: enquanto isso a linha fica de fora, sem número inventado
+  const members = state.members[guild.id];
+  useEffect(() => {
+    if (!members) loadMembers(guild.id).catch(() => {});
+  }, [guild.id, members, loadMembers]);
+  const online = members && Object.keys(members).filter((id) => statusOf(state, id) !== "offline").length;
+  const partial = !!members && Object.keys(members).length < guild.member_count;
 
   const sorted = [...guild.channels].filter((c) => c.type !== 11).sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
   // threads ficam embaixo do canal, mais novas primeiro
@@ -74,7 +86,7 @@ export function GuildSidebar({
     ...categories.map((cat) => ({ cat, items: sorted.filter((c) => c.parent_id === cat.id && c.type !== 4) })),
   ];
 
-  const menuItem = "flex w-full items-center justify-between gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-paper-2";
+  const menuItem = "flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-paper-2";
 
   return (
     <aside className={shell}>
@@ -85,12 +97,23 @@ export function GuildSidebar({
         )}
         <button
           onClick={() => setMenu((v) => !v)}
-          className={`flex h-12 w-full shrink-0 items-center justify-between border-b border-ink/15 px-4 font-display text-[15px] font-bold ${
-            guild.banner ? "absolute inset-x-0 top-12 bg-linear-to-t from-chrome/85 to-transparent text-on-chrome" : "hover:bg-paper-3/60"
-          }`}
+          aria-expanded={menu}
+          className="flex w-full items-center justify-between gap-2 border-b border-line px-4 py-3 text-left hover:bg-paper-3/60"
         >
-          <span className="truncate">{guild.name}</span>
-          {menu ? <X size={18} /> : <ChevronDown size={18} />}
+          <span className="min-w-0 leading-tight">
+            <span className="block truncate font-display text-[15px] font-bold">{guild.name}</span>
+            <span className="mt-0.5 block truncate text-xs text-muted">
+              Comunidade • {guild.member_count} {guild.member_count === 1 ? "membro" : "membros"}
+            </span>
+            {online != null && (
+              <span className="mt-0.5 flex items-center gap-1.5 text-xs text-muted">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-online" />
+                {online}
+                {partial && "+"} online
+              </span>
+            )}
+          </span>
+          {menu ? <X size={18} className="shrink-0" /> : <ChevronDown size={18} className="shrink-0" />}
         </button>
         <AnimatePresence>
           {menu && (
@@ -98,7 +121,7 @@ export function GuildSidebar({
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -6 }}
-              className="absolute left-2 right-2 top-full z-50 mt-1 rounded-xl border border-ink bg-sheet p-1.5 shadow-hard"
+              className="absolute left-2 right-2 top-full z-50 mt-1 rounded-xl border border-line-strong bg-sheet p-1.5 shadow-pop"
               onClick={() => setMenu(false)}
             >
               <button className={`${menuItem} text-signal-ink`} onClick={onInvite}>
@@ -119,7 +142,7 @@ export function GuildSidebar({
                   </button>
                 </>
               )}
-              <span className="my-1 block h-px bg-ink/15" />
+              <span className="my-1 block h-px bg-line" />
               <button className={`${menuItem} text-dnd hover:bg-dnd/10`} onClick={onLeave}>
                 {isOwner ? "Excluir servidor" : "Sair do servidor"} {isOwner ? <Trash2 size={16} /> : <LogOut size={16} />}
               </button>
@@ -130,11 +153,16 @@ export function GuildSidebar({
 
       <div className="scroll-thin flex-1 overflow-y-auto px-2 pb-3 pt-2">
         <button
-          onClick={onInvite}
-          className="mb-1 flex w-full items-center gap-2 rounded-md border border-dashed border-ink/30 px-2 py-2 text-left text-xs text-muted hover:border-ink hover:text-ink"
+          onClick={onToggleMembers}
+          aria-pressed={membersOpen}
+          className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-[15px] text-muted hover:bg-paper-3/60 hover:text-ink"
         >
-          <UserPlus size={15} />
-          Chamar a galera pro servidor
+          <Users size={18} className="shrink-0 opacity-70" />
+          Membros
+        </button>
+        <button onClick={onInvite} className="flex w-full items-center gap-2 rounded-xl px-2 py-1.5 text-left text-[15px] text-muted hover:bg-paper-3/60 hover:text-ink">
+          <UserPlus size={18} className="shrink-0 opacity-70" />
+          Convidar pessoas
         </button>
 
         {groups.map(({ cat, items }) => {
@@ -146,7 +174,7 @@ export function GuildSidebar({
                 <div className="group flex items-center justify-between px-1">
                   <button
                     onClick={() => setClosed((c) => ({ ...c, [key]: !c[key] }))}
-                    className="flex min-w-0 items-center gap-0.5 font-mono text-[11px] font-semibold uppercase tracking-wider text-muted hover:text-ink"
+                    className="flex min-w-0 items-center gap-0.5 text-[11px] font-bold uppercase tracking-[0.08em] text-muted hover:text-ink"
                   >
                     <ChevronDown size={12} className={`shrink-0 transition-transform ${isClosed ? "-rotate-90" : ""}`} />
                     <span className="truncate">{cat.name}</span>
@@ -173,9 +201,9 @@ export function GuildSidebar({
                       <li key={ch.id}>
                         <button
                           onClick={() => (voice ? onVoice(ch.id) : onSelect(ch.id))}
-                          className={`relative flex w-full items-center gap-1.5 rounded-md px-2 py-1.5 text-left text-[15px] ${
+                          className={`relative flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-[15px] ${
                             active
-                              ? "bg-channel-active font-semibold text-ink"
+                              ? "glow bg-channel-active font-semibold text-ink"
                               : inCall
                                 ? "font-semibold text-online hover:bg-paper-3/60"
                                 : unread
@@ -183,12 +211,12 @@ export function GuildSidebar({
                                 : "text-muted hover:bg-paper-3/60 hover:text-ink"
                           }`}
                         >
-                          {unread && !active && <span className="absolute -left-2 h-2 w-1 rounded-r bg-ink" />}
+                          {unread && !active && <span className="absolute -left-2 h-2 w-1 rounded-r bg-signal" />}
                           <Icon size={18} className="shrink-0 opacity-70" />
                           <span className="truncate">{ch.name}</span>
                           {voice && <CallTimer startedAt={callStartedAt(guild, ch.id)} className="ml-auto text-xs font-normal text-muted" />}
                           {!!mentions && !active && (
-                            <span className="ml-auto rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-on-signal">{mentions}</span>
+                            <span className="ml-auto rounded-full bg-signal px-1.5 text-[11px] font-bold tabular-nums text-on-signal">{mentions}</span>
                           )}
                         </button>
                         {people.length > 0 && (
@@ -222,14 +250,14 @@ export function GuildSidebar({
                           </ul>
                         )}
                         {threadsOf(ch.id).length > 0 && (
-                          <ul className="mb-1 ml-5 border-l border-ink/15 pl-2">
+                          <ul className="mb-1 ml-5 border-l border-line pl-2">
                             {threadsOf(ch.id).map((t) => {
                               const on = t.id === channelId;
                               return (
                                 <li key={t.id}>
                                   <button
                                     onClick={() => onSelect(t.id)}
-                                    className={`flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-left text-sm ${
+                                    className={`flex w-full items-center gap-1.5 rounded-lg px-2 py-1 text-left text-sm ${
                                       on ? "bg-channel-active font-semibold text-ink" : isUnread(state, t) ? "font-semibold text-ink hover:bg-paper-3/60" : "text-muted hover:bg-paper-3/60 hover:text-ink"
                                     }`}
                                   >
@@ -279,8 +307,8 @@ export function HomeSidebar({
 
   return (
     <aside className={shell}>
-      <div className="flex h-12 shrink-0 items-center border-b border-ink/15 px-2.5">
-        <label className="flex w-full items-center gap-2 rounded-md bg-paper-3 px-2 py-1.5 text-sm text-muted">
+      <div className="flex h-12 shrink-0 items-center border-b border-line px-2.5">
+        <label className="flex w-full items-center gap-2 rounded-lg bg-paper-3 px-2 py-1.5 text-sm text-muted">
           <Search size={14} />
           <input
             value={q}
@@ -293,16 +321,16 @@ export function HomeSidebar({
       <div className="scroll-thin flex-1 overflow-y-auto px-2 pt-2">
         <button
           onClick={onFriends}
-          className={`flex w-full items-center gap-3 rounded-md px-2 py-2 text-[15px] font-semibold ${
+          className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-[15px] font-semibold ${
             view === null ? "bg-paper-3 text-ink" : "text-muted hover:bg-paper-3/60 hover:text-ink"
           }`}
         >
           <Users size={20} />
           Amigos
-          {!!pending && <span className="ml-auto rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-on-signal">{pending}</span>}
+          {!!pending && <span className="ml-auto rounded-full bg-signal px-1.5 text-[11px] font-bold tabular-nums text-on-signal">{pending}</span>}
         </button>
 
-        <div className="mt-4 flex items-center justify-between px-2 font-mono text-[11px] font-semibold uppercase tracking-wider text-muted">
+        <div className="mt-4 flex items-center justify-between px-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">
           Mensagens diretas
           <button aria-label="Nova conversa" onClick={onNewDm} className="hover:text-ink">
             <Plus size={15} />
@@ -319,7 +347,7 @@ export function HomeSidebar({
               <li key={c.id}>
                 <button
                   onClick={() => onDm(c.id)}
-                  className={`flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-left ${active ? "bg-paper-3" : "hover:bg-paper-3/60"}`}
+                  className={`flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left ${active ? "bg-paper-3" : "hover:bg-paper-3/60"}`}
                 >
                   <UserAvatar
                     user={u}
@@ -334,7 +362,7 @@ export function HomeSidebar({
                     {c.type === 3 && <span className="block truncate text-xs text-muted">{(c.recipients?.length ?? 0) + 1} pessoas</span>}
                   </span>
                   {!!mentions && !active && (
-                    <span className="rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-on-signal">{mentions}</span>
+                    <span className="rounded-full bg-signal px-1.5 text-[11px] font-bold tabular-nums text-on-signal">{mentions}</span>
                   )}
                 </button>
               </li>

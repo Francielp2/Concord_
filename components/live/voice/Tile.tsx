@@ -67,6 +67,7 @@ export function Tile({
       <span className="absolute bottom-1.5 left-1.5 flex max-w-[80%] items-center gap-1 rounded bg-chrome/80 px-1.5 py-0.5 text-[11px] font-semibold text-on-chrome">
         <span className="truncate">{screen ? `Tela de ${name}` : name}</span>
         {!screen && !tile.micOn && <span className="shrink-0"> · mudo</span>}
+        {screen && <span className="shrink-0"> · {tile.screenAudio ? "com som" : "sem som"}</span>}
         {!tile.local && personPrefs(prefs, tile.identity).muted && <VolumeX size={12} className="shrink-0 text-dnd" aria-label="Silenciado pra você" />}
       </span>
       <div className="absolute right-1.5 top-1.5 flex gap-1 transition-opacity [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:focus-within:opacity-100">

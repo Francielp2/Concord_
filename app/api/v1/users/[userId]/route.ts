@@ -1,3 +1,4 @@
+import { profileWatchers, removeOldAvatar } from "@/lib/server/avatars";
 import { hashPassword, requireAuth, requireMe, revokeOtherSessions, verifyPassword } from "@/lib/server/auth";
 import { db } from "@/lib/server/db";
 import { dispatch, dispatchToUsers } from "@/lib/server/events";
@@ -27,7 +28,7 @@ export const PATCH = route<Params>(async (req, { params }) => {
   const form = new Form(body);
   const username = form.optionalString("username", { min: 2, max: 32, pattern: USERNAME_PATTERN });
   const globalName = form.optionalString("global_name", { min: 1, max: 32 });
-  const avatar = form.optionalString("avatar", { max: 512, pattern: /^https:\/\/\S+$/ });
+  const avatar = form.optionalString("avatar", { max: 512, pattern: /^(https:\/\/\S+|\/api\/v1\/guild-assets\/\d+)$/ });
   const bio = form.optionalString("bio", { max: 190 });
   const newPassword = form.optionalString("new_password", { min: 8, max: 72, trim: false });
   const password = form.optionalString("password", { max: 72, trim: false });
@@ -64,5 +65,12 @@ export const PATCH = route<Params>(async (req, { params }) => {
       { guildId: m.guildId },
     );
   }
+  // Quem não divide servidor também vê a mudança. Sem guild_id, o cliente só atualiza o cadastro da pessoa;
+  // USER_UPDATE não serve aqui, porque nele o cliente entende que os dados são os da própria conta.
+  const profileChanged = username !== undefined || globalName !== undefined || avatar !== undefined || bio !== undefined;
+  if (profileChanged) {
+    await dispatchToUsers("GUILD_MEMBER_UPDATE", { user: serializeUser(updated) }, await profileWatchers(user.id));
+  }
+  if (avatar !== undefined && user.avatar && user.avatar !== avatar) await removeOldAvatar(user.id, user.avatar);
   return json(serializeSelf(updated));
 });

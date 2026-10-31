@@ -194,7 +194,7 @@ export function Chat({
         ? "Várias pessoas estão digitando…"
         : `${typingIds.map((id) => displayName(state.users[id])).join(", ")} ${typingIds.length > 1 ? "estão" : "está"} digitando…`;
 
-  const iconBtn = "flex h-8 w-8 items-center justify-center rounded-md text-ink-3 hover:bg-paper-2 hover:text-ink";
+  const iconBtn = "flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 hover:bg-paper-2 hover:text-ink";
   const replying = replyTo;
 
   return (
@@ -208,7 +208,7 @@ export function Chat({
         if (e.dataTransfer.files.length) uploader.add(e.dataTransfer.files);
       }}
     >
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b border-ink/15 px-3">
+      <header className="flex min-h-14 shrink-0 items-center gap-2 border-b border-line px-3 py-1.5">
         <button className={`${iconBtn} md:hidden`} aria-label="Abrir menu" onClick={onMenu}>
           <Menu size={20} />
         </button>
@@ -219,22 +219,17 @@ export function Chat({
         ) : (
           channel.type === 11 ? <MessagesSquare size={20} className="text-muted" /> : <Hash size={20} className="text-muted" />
         )}
-        <h1 className="truncate font-display text-[16px] font-bold">{title}</h1>
-        {channel.type === 11 && channel.parent_id && guild && (
-          <button
-            onClick={() => onOpenChannel?.(channel.parent_id!)}
-            className="hidden truncate text-sm text-muted hover:text-ink sm:block"
-          >
-            em #{guild.channels.find((c) => c.id === channel.parent_id)?.name}
-          </button>
-        )}
-        {channel.topic && (
-          <>
-            <span className="mx-1 hidden h-5 w-px bg-ink/20 lg:block" />
-            <p className="hidden truncate text-sm text-muted lg:block">{channel.topic}</p>
-          </>
-        )}
-        <div className="ml-auto flex items-center gap-0.5">
+        <div className="min-w-0 flex-1 leading-tight">
+          <h1 className="truncate font-display text-[16px] font-bold">{title}</h1>
+          {channel.type === 11 && channel.parent_id && guild ? (
+            <button onClick={() => onOpenChannel?.(channel.parent_id!)} className="block max-w-full truncate text-xs text-muted hover:text-ink">
+              em #{guild.channels.find((c) => c.id === channel.parent_id)?.name}
+            </button>
+          ) : (
+            channel.topic && <p className="truncate text-xs text-muted">{channel.topic}</p>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-0.5">
           {guild && onInvite && (
             <button className={`${iconBtn} hidden sm:flex`} aria-label="Convidar" onClick={onInvite}>
               <UserPlus size={19} />
@@ -274,10 +269,10 @@ export function Chat({
                 </>
               ) : (
                 <>
-                  <span className="flex h-16 w-16 items-center justify-center rounded-full border border-ink bg-paper-2 shadow-hard-sm">
+                  <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-paper-3 text-ink-3">
                     {isDm ? <AtSign size={30} /> : <Hash size={34} />}
                   </span>
-                  <h2 className="mt-3 font-display text-3xl font-extrabold">{isDm ? title : `Bem-vindo a #${title}`}</h2>
+                  <h2 className="mt-3 font-display text-2xl font-bold">{isDm ? title : `Bem-vindo a #${title}`}</h2>
                   <p className="mt-1 text-sm text-muted">{channel.topic ?? "Começo do canal."}</p>
                 </>
               )}
@@ -309,18 +304,18 @@ export function Chat({
               <div key={m.id}>
                 {newDay && (
                   <div className="my-4 flex items-center gap-3 px-4">
-                    <span className="h-px flex-1 bg-ink/15" />
-                    <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-muted">{formatDay(m.timestamp)}</span>
-                    <span className="h-px flex-1 bg-ink/15" />
+                    <span className="h-px flex-1 bg-line" />
+                    <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">{formatDay(m.timestamp)}</span>
+                    <span className="h-px flex-1 bg-line" />
                   </div>
                 )}
                 {m.type === 7 ? (
-                  <div className="flex items-center gap-3 px-4 py-1.5 text-sm text-muted">
-                    <span className="w-10 text-center text-online">→</span>
-                    <span>
+                  <div className="mx-2 my-1.5 flex w-fit max-w-[calc(100%-1rem)] items-center gap-3 rounded-2xl border border-line bg-paper px-3 py-2 text-sm text-muted sm:mx-4">
+                    <span className="text-online">→</span>
+                    <span className="min-w-0">
                       <b className="text-ink">{displayName(state.users[m.author.id] ?? m.author)}</b> chegou no servidor.
                     </span>
-                    <span className="font-mono text-[11px] text-faint">{formatTime(m.timestamp)}</span>
+                    <span className="shrink-0 text-[11px] tabular-nums text-faint">{formatTime(m.timestamp)}</span>
                   </div>
                 ) : (
                   <Row
@@ -359,7 +354,7 @@ export function Chat({
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 6 }}
-              className="flex items-center justify-between rounded-t-lg border border-b-0 border-ink/20 bg-paper-2 px-3 py-1.5 text-sm text-muted"
+              className="flex items-center justify-between rounded-t-lg border border-b-0 border-line bg-paper-2 px-3 py-1.5 text-sm text-muted"
             >
               <span className="truncate">
                 Respondendo a <b className="text-ink">{displayName(state.users[replying.author.id] ?? replying.author)}</b>
@@ -370,9 +365,9 @@ export function Chat({
             </motion.div>
           )}
         </AnimatePresence>
-        <div className={`border border-ink bg-paper shadow-hard-sm ${replying ? "rounded-b-lg" : "rounded-lg"}`}>
+        <div className={`border border-line bg-paper shadow-soft focus-within:border-line-strong ${replying ? "rounded-b-2xl" : "rounded-2xl"}`}>
           <UploadTray uploads={uploader.uploads} onRemove={uploader.remove} />
-          <div className="flex items-end gap-1 px-2 py-1.5">
+          <div className="flex items-end gap-1 px-2.5 py-2">
             <label className={`${iconBtn} cursor-pointer`} aria-label="Enviar arquivo">
               <CirclePlus size={21} />
               <input
@@ -412,7 +407,7 @@ export function Chat({
                 }
               }}
               placeholder={isDm ? `Conversar com ${title}` : `Conversar em #${title}`}
-              className="max-h-40 min-h-8 min-w-0 flex-1 resize-none bg-transparent py-1.5 text-base outline-none placeholder:text-faint md:text-[15px]"
+              className="max-h-40 min-h-8 min-w-0 flex-1 resize-none bg-transparent py-1.5 text-base outline-none placeholder:text-muted md:text-[15px]"
             />
             <div className="relative">
               <button className={iconBtn} aria-label="Emoji" onClick={() => setPicker((p) => (p === "composer" ? null : "composer"))}>
@@ -514,7 +509,7 @@ function EmojiBar({ onPick, className, guildId }: { onPick: (e: string) => void;
   const { state } = useStore();
   const custom = guildId ? (state.guilds[guildId]?.emojis ?? []) : [];
   return (
-    <div className={`absolute z-30 w-max max-w-[280px] rounded-lg border border-ink bg-sheet p-1 shadow-hard-sm ${className ?? ""}`}>
+    <div className={`absolute z-30 w-max max-w-[280px] rounded-xl border border-line bg-sheet p-1 shadow-pop ${className ?? ""}`}>
       <div className="flex">
         {QUICK.map((e) => (
           <button key={e} onClick={() => onPick(e)} className="flex h-8 w-8 items-center justify-center rounded hover:bg-paper-2">
@@ -523,7 +518,7 @@ function EmojiBar({ onPick, className, guildId }: { onPick: (e: string) => void;
         ))}
       </div>
       {!!custom.length && (
-        <div className="mt-1 flex flex-wrap border-t border-ink/15 pt-1">
+        <div className="mt-1 flex flex-wrap border-t border-line pt-1">
           {custom.map((e) => (
             <button
               key={e.id}
@@ -586,7 +581,7 @@ function Row({
   return (
     <div
       className={`group relative px-2 hover:bg-paper/70 sm:px-4 ${grouped ? "py-0.5" : "mt-3 pb-0.5 pt-1"} ${
-        mentionsMe ? "border-l-2 border-mention bg-mention/10" : ""
+        mentionsMe ? "rounded-r-xl border-l-2 border-mention bg-mention/10" : ""
       } ${m.pending ? "opacity-60" : ""}`}
     >
       {m.message_reference && (
@@ -605,7 +600,7 @@ function Row({
       <div className="flex gap-2.5 sm:gap-4">
         <div className="w-10 shrink-0">
           {grouped ? (
-            <span className="hidden pt-1 text-right font-mono text-[10px] text-faint group-hover:block">{formatTime(m.timestamp)}</span>
+            <span className="hidden pt-1 text-right text-[10px] tabular-nums text-faint group-hover:block">{formatTime(m.timestamp)}</span>
           ) : (
             <UserAvatar user={author} size={40} />
           )}
@@ -616,17 +611,17 @@ function Row({
               <span className="font-semibold" style={{ color: author.id === me.id ? "var(--color-signal-ink)" : undefined }}>
                 {displayName(author)}
               </span>
-              {author.bot && (
-                <span className="rounded border border-ink px-1 font-mono text-[10px] font-bold uppercase leading-4">bot</span>
-              )}
-              <span className="font-mono text-[11px] text-faint">{formatTime(m.timestamp)}</span>
+              {author.bot && <span className="rounded bg-signal px-1 text-[10px] font-bold leading-4 text-on-signal">APP</span>}
+              <span className="text-[11px] tabular-nums text-faint">{formatTime(m.timestamp)}</span>
             </div>
           )}
           {editing ? (
             <EditBox m={m} channelId={channelId} onDone={onEditDone} />
           ) : (
             m.content && (
-              <p className="whitespace-pre-wrap break-words text-[15px] leading-relaxed text-ink-2">
+              <p className={`whitespace-pre-wrap break-words text-[15px] leading-relaxed text-ink-2 ${
+                  author.bot ? "mt-1 w-fit max-w-full rounded-2xl border border-line bg-paper px-3 py-2" : ""
+                }`}>
                 <RichText text={m.content} guildId={guildId} />
                 {m.edited_timestamp && <span className="ml-1 text-[11px] text-faint">(editada)</span>}
               </p>
@@ -636,7 +631,7 @@ function Row({
           {m.thread && (
             <button
               onClick={() => onOpenChannel?.(m.thread!.id)}
-              className="mt-1.5 flex w-fit items-center gap-2 rounded-lg border border-ink/20 bg-paper px-2.5 py-1.5 text-sm hover:border-ink"
+              className="mt-1.5 flex w-fit items-center gap-2 rounded-xl border border-line bg-paper px-2.5 py-1.5 text-sm hover:border-line-strong"
             >
               <MessagesSquare size={15} className="text-signal" />
               <b>{m.thread.name}</b>
@@ -662,8 +657,8 @@ function Row({
                 <button
                   key={r.emoji.name}
                   onClick={() => onReact(r.emoji.name)}
-                  className={`flex items-center gap-1 rounded-md border px-1.5 py-0.5 text-sm ${
-                    r.me ? "border-signal bg-signal/10" : "border-ink/20 bg-paper hover:border-ink/50"
+                  className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-sm ${
+                    r.me ? "border-signal bg-signal/10" : "border-line bg-paper hover:border-line-strong"
                   }`}
                 >
                   <EmojiGlyph value={r.emoji.name} size={16} />
@@ -677,7 +672,7 @@ function Row({
 
       {!m.pending && !m.failed && !editing && (
         <div
-          className={`absolute -top-4 right-2 z-10 items-center rounded-md border border-ink bg-sheet shadow-hard-sm sm:right-4 ${
+          className={`absolute -top-4 right-2 z-10 items-center overflow-visible rounded-xl border border-line bg-sheet shadow-pop sm:right-4 ${
             picker ? "flex" : "hidden group-hover:flex"
           }`}
         >
@@ -686,7 +681,7 @@ function Row({
               {e}
             </button>
           ))}
-          <span className="h-5 w-px bg-ink/20" />
+          <span className="h-5 w-px bg-line" />
           <div className="relative">
             <button aria-label="Reagir" onClick={onPicker} className="flex h-8 w-8 items-center justify-center text-ink-3 hover:bg-paper-2">
               <SmilePlus size={17} />
@@ -740,7 +735,7 @@ function EditBox({ m, channelId, onDone }: { m: ApiMessage; channelId: string; o
           }
           if (e.key === "Escape") onDone();
         }}
-        className="w-full resize-none rounded-lg border border-ink bg-paper px-3 py-2 text-base outline-none md:text-[15px]"
+        className="w-full resize-none rounded-xl border border-line bg-paper px-3 py-2 text-base outline-none focus:border-signal md:text-[15px]"
         rows={Math.min(6, value.split("\n").length)}
       />
       <p className="text-xs text-muted">
@@ -753,9 +748,9 @@ function EditBox({ m, channelId, onDone }: { m: ApiMessage; channelId: string; o
 function UploadTray({ uploads, onRemove }: { uploads: Upload[]; onRemove: (id: string) => void }) {
   if (!uploads.length) return null;
   return (
-    <div className="flex gap-2 overflow-x-auto border-b border-ink/15 p-2">
+    <div className="flex gap-2 overflow-x-auto border-b border-line p-2">
       {uploads.map((u) => (
-        <div key={u.id} className="relative flex w-36 shrink-0 flex-col rounded-lg border border-ink/20 bg-sheet p-2">
+        <div key={u.id} className="relative flex w-36 shrink-0 flex-col rounded-xl border border-line bg-sheet p-2">
           {u.preview ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={u.preview} alt="" className="h-20 w-full rounded object-cover" />
@@ -771,7 +766,7 @@ function UploadTray({ uploads, onRemove }: { uploads: Upload[]; onRemove: (id: s
           <button
             aria-label="Tirar arquivo"
             onClick={() => onRemove(u.id)}
-            className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-ink bg-sheet hover:text-dnd"
+            className="absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full border border-line-strong bg-sheet hover:text-dnd"
           >
             <X size={13} />
           </button>
@@ -787,7 +782,7 @@ function TypingDots() {
       {[0, 1, 2].map((i) => (
         <motion.span
           key={i}
-          className="h-1.5 w-1.5 rounded-full bg-ink"
+          className="h-1.5 w-1.5 rounded-full bg-muted"
           animate={{ opacity: [0.25, 1, 0.25] }}
           transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
         />

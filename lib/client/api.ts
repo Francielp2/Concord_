@@ -25,6 +25,8 @@ const CODE_PT: Record<number, string> = {
   50013: "Você não tem permissão pra isso.",
   80000: "Essa pessoa não aceita pedidos de amizade.",
   30001: "Você chegou no limite de servidores.",
+  50138: "Essa imagem é grande demais.",
+  50142: "Pra enviar foto, entre em um servidor primeiro.",
   429: "Muitas tentativas. Espera um pouco.",
 };
 

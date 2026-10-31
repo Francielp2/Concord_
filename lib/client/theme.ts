@@ -1,6 +1,7 @@
 "use client";
 
 import { useSyncExternalStore, type CSSProperties } from "react";
+import { LEGACY_BLACK_KEY, THEME_KEY } from "./themeBoot";
 
 // ---- cor de destaque do servidor ----
 
@@ -21,18 +22,30 @@ export const hexToColor = (hex: string) => parseInt(hex.replace("#", ""), 16);
 
 const SHEET = [250, 247, 240];
 const INK = [25, 23, 20];
-const PAPER = [244, 239, 228];
-const BLACK = [0, 0, 0];
+
+export type ThemeId = "beige" | "default" | "black";
+
+export const THEMES: { id: ThemeId; name: string; hint: string }[] = [
+  { id: "beige", name: "Tema Beige", hint: "Moderno e elegante" },
+  { id: "default", name: "Tema Padrão", hint: "Visual limpo e familiar" },
+  { id: "black", name: "Tema Preto", hint: "Sofisticado e imersivo" },
+];
+
+// a superfície principal de cada tema (--color-sheet), e para onde o texto caminha até ficar legível
+const SURFACE: Record<ThemeId, { sheet: number[]; target: number[] }> = {
+  beige: { sheet: [251, 246, 236], target: [0, 0, 0] },
+  default: { sheet: [255, 253, 248], target: [0, 0, 0] },
+  black: { sheet: [21, 25, 38], target: [255, 255, 255] },
+};
 
 // Qualquer cor pode ser escolhida, então o texto se adapta a ela: amarelo-claro em botão pede
 // texto escuro, e como texto sobre o fundo a cor escurece (ou clareia) até ficar legível.
-export function accentVars(color: number | null | undefined, black: boolean): CSSProperties | undefined {
+export function accentVars(color: number | null | undefined, theme: ThemeId): CSSProperties | undefined {
   if (color == null) return undefined;
   const rgb = rgbOf(color);
-  const surface = black ? BLACK : PAPER;
-  const target = black ? [255, 255, 255] : BLACK;
+  const { sheet, target } = SURFACE[theme];
   let readable = rgb;
-  for (let t = 0.1; t <= 1 && contrast(readable, surface) < 4.5; t += 0.1) {
+  for (let t = 0.1; t <= 1 && contrast(readable, sheet) < 4.5; t += 0.1) {
     readable = rgb.map((v, i) => v + (target[i] - v) * t);
   }
   const hex = hexOf(rgb);
@@ -45,34 +58,38 @@ export function accentVars(color: number | null | undefined, black: boolean): CS
   } as CSSProperties;
 }
 
-// ---- fundo preto (preferência deste navegador) ----
+// ---- tema (preferência deste navegador) ----
 
-const BLACK_KEY = "concord:black-background";
 const listeners = new Set<() => void>();
 
-function readBlack() {
+function readTheme(): ThemeId {
   try {
-    return localStorage.getItem(BLACK_KEY) === "1";
+    const saved = localStorage.getItem(THEME_KEY);
+    if (saved === "beige" || saved === "default" || saved === "black") return saved;
+    // quem tinha ligado o antigo "fundo preto" continua no escuro
+    return localStorage.getItem(LEGACY_BLACK_KEY) === "1" ? "black" : "default";
   } catch {
-    return false;
+    return "default";
   }
 }
 
-export function setBlackBackground(on: boolean) {
+export function setTheme(theme: ThemeId) {
   try {
-    if (on) localStorage.setItem(BLACK_KEY, "1");
-    else localStorage.removeItem(BLACK_KEY);
+    localStorage.setItem(THEME_KEY, theme);
+    localStorage.removeItem(LEGACY_BLACK_KEY);
   } catch {}
   listeners.forEach((fn) => fn());
 }
 
 function subscribe(fn: () => void) {
   listeners.add(fn);
+  window.addEventListener("storage", fn);
   return () => {
     listeners.delete(fn);
+    window.removeEventListener("storage", fn);
   };
 }
 
-export function useBlackBackground() {
-  return useSyncExternalStore(subscribe, readBlack, () => false);
+export function useTheme() {
+  return useSyncExternalStore(subscribe, readTheme, () => "default" as ThemeId);
 }

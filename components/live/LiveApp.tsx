@@ -7,7 +7,7 @@ import { api } from "@/lib/client/api";
 import { registerServiceWorker } from "@/lib/client/install";
 import { StoreProvider, useStore } from "@/lib/client/store";
 import { unlockAudio } from "@/lib/client/sounds";
-import { accentVars, useBlackBackground } from "@/lib/client/theme";
+import { accentVars, useTheme } from "@/lib/client/theme";
 import type { ApiChannel, ApiGuild } from "@/lib/client/types";
 import { voiceSessionId } from "@/lib/client/voice";
 import { Chat } from "./Chat";
@@ -78,15 +78,17 @@ function Shell() {
   const [voiceFocus, setVoiceFocus] = useState(0);
   const [voiceKicked, setVoiceKicked] = useState(false);
   const [sessionId] = useState(voiceSessionId);
-  const black = useBlackBackground();
-  // no <html> também, para a rolagem elástica não mostrar o fundo claro nas pontas
+  const theme = useTheme();
+  // no <html>, para a rolagem elástica e a janela destacada da chamada acompanharem o tema
   useEffect(() => {
-    if (!black) return;
-    document.documentElement.dataset.theme = "black";
+    const root = document.documentElement;
+    root.dataset.theme = theme;
+    const bar = getComputedStyle(root).getPropertyValue("--color-rail").trim();
+    if (bar) document.querySelector('meta[name="theme-color"]')?.setAttribute("content", bar);
     return () => {
-      delete document.documentElement.dataset.theme;
+      delete root.dataset.theme;
     };
-  }, [black]);
+  }, [theme]);
   const [muted, setMuted] = useState(false);
   const [deaf, setDeaf] = useState(false);
 
@@ -218,9 +220,9 @@ function Shell() {
 
   if (!state.me) {
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-chrome text-on-chrome">
-        <LogoMark size={56} inverted />
-        <span className="flex items-center gap-2 font-mono text-sm text-faint">
+      <div className="app-backdrop flex h-dvh flex-col items-center justify-center gap-4 text-ink">
+        <LogoMark size={56} />
+        <span className="flex items-center gap-2 text-sm text-muted">
           <Loader2 size={16} className="animate-spin" /> Conectando…
         </span>
       </div>
@@ -245,6 +247,11 @@ function Shell() {
       onCreateChannel={(parentId, type) => setCreateChannel({ guild, parentId, type })}
       onLeave={() => setLeave(guild)}
       onSettings={() => setSettings(guild)}
+      membersOpen={membersOpen}
+      onToggleMembers={() => {
+        toggleMembers();
+        setDrawer(false);
+      }}
       footer={footer}
     />
   ) : (
@@ -258,26 +265,26 @@ function Shell() {
   );
 
   return (
-    <div data-theme={black ? "black" : undefined} style={accentVars(guild?.accent_color, black)} className="flex h-dvh overflow-hidden bg-chrome text-ink">
-      <div
-        className={`fixed inset-y-0 left-0 z-40 flex transition-transform duration-300 md:static md:translate-x-0 ${
-          drawer ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <Rail active={guild ? guild.id : "home"} onSelect={(id) => go({ place: id })} onAdd={() => setAddGuild(true)} />
-        <div className="flex md:overflow-hidden md:rounded-tl-xl">{sidebar}</div>
-      </div>
-      {drawer && <button aria-label="Fechar menu" className="fixed inset-0 z-30 bg-scrim/50 md:hidden" onClick={() => setDrawer(false)} />}
+    <div style={accentVars(guild?.accent_color, theme)} className="app-backdrop h-dvh text-ink md:p-3 lg:p-4">
+      <div className="flex h-full overflow-hidden bg-rail md:rounded-3xl md:border md:border-line md:shadow-pop">
+        <div
+          className={`fixed inset-y-0 left-0 z-40 flex transition-transform duration-300 md:static md:translate-x-0 ${
+            drawer ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <Rail active={guild ? guild.id : "home"} onSelect={(id) => go({ place: id })} onAdd={() => setAddGuild(true)} />
+          <div className="flex md:overflow-hidden md:rounded-tl-2xl">{sidebar}</div>
+        </div>
+        {drawer && <button aria-label="Fechar menu" className="fixed inset-0 z-30 bg-scrim/50 md:hidden" onClick={() => setDrawer(false)} />}
 
-      <main className="flex min-w-0 flex-1 flex-col">
-        {state.conn !== "ready" && (
-          <div className="bg-mustard px-3 py-1 text-center text-xs font-semibold text-chrome">Conexão caiu. Reconectando…</div>
-        )}
-        {state.me.verified === false && <VerifyBanner email={state.me.email} />}
-        <div ref={setVoiceBar} className="md:hidden" />
-        <div className="flex min-h-0 flex-1">
-          {channel ? (
-            <>
+        <main className="flex min-w-0 flex-1 flex-col bg-sheet">
+          {state.conn !== "ready" && (
+            <div className="bg-mustard px-3 py-1 text-center text-xs font-semibold text-chrome">Conexão caiu. Reconectando…</div>
+          )}
+          {state.me.verified === false && <VerifyBanner email={state.me.email} />}
+          <div ref={setVoiceBar} className="md:hidden" />
+          <div className="flex min-h-0 flex-1">
+            {channel ? (
               <Chat
                 key={channel.id}
                 channel={channel}
@@ -288,17 +295,17 @@ function Shell() {
                 onInvite={guild ? () => setInvite(guild) : undefined}
                 onOpenChannel={(id) => guild && go({ channelByGuild: { ...nav.channelByGuild, [guild.id]: id } })}
               />
-              {guild && membersOpen && <Members guild={guild} onDm={openDmWith} className="hidden lg:block" />}
-            </>
-          ) : guild ? (
-            <EmptyGuild guild={guild} onCreate={() => setCreateChannel({ guild, parentId: null, type: 0 })} />
-          ) : (
-            <Friends onDm={openDmWith} onMenu={() => setDrawer(true)} />
-          )}
-        </div>
-      </main>
+            ) : guild ? (
+              <EmptyGuild guild={guild} onCreate={() => setCreateChannel({ guild, parentId: null, type: 0 })} />
+            ) : (
+              <Friends onDm={openDmWith} onMenu={() => setDrawer(true)} />
+            )}
+            {guild && membersOpen && <Members guild={guild} onDm={openDmWith} className="hidden lg:block" />}
+          </div>
+        </main>
+      </div>
 
-      {guild && channel && membersDrawer && (
+      {guild && membersDrawer && (
         <div className="fixed inset-0 z-40 flex justify-end lg:hidden">
           <button aria-label="Fechar membros" className="flex-1 bg-scrim/50" onClick={() => setMembersDrawer(false)} />
           <Members guild={guild} onDm={openDmWith} className="max-w-[80vw] pt-[env(safe-area-inset-top)]" />
@@ -360,7 +367,7 @@ function VerifyBanner({ email }: { email?: string }) {
   const [hidden, setHidden] = useState(false);
   if (hidden) return null;
   return (
-    <div className="flex items-center justify-center gap-3 border-b border-ink/15 bg-paper-2 px-3 py-1.5 text-xs text-ink-3">
+    <div className="flex items-center justify-center gap-3 border-b border-line bg-paper-2 px-3 py-1.5 text-xs text-ink-3">
       <span>
         Confirma teu e-mail{email ? <> (<b className="text-ink">{email}</b>)</> : null} pelo link que mandamos.
       </span>
@@ -388,9 +395,9 @@ function VerifyBanner({ email }: { email?: string }) {
 function EmptyGuild({ guild, onCreate }: { guild: ApiGuild; onCreate: () => void }) {
   return (
     <section className="flex flex-1 flex-col items-center justify-center bg-sheet px-6 text-center">
-      <span className="font-serif text-5xl italic text-faint">Silêncio por aqui.</span>
+      <span className="font-display text-3xl font-bold text-muted">Silêncio por aqui.</span>
       <p className="mt-2 text-muted">O {guild.name} ainda não tem canal de texto que você consiga ver.</p>
-      <button onClick={onCreate} className="mt-5 rounded-full border border-ink bg-signal px-5 py-2.5 font-semibold text-on-signal shadow-hard-sm">
+      <button onClick={onCreate} className="glow mt-5 rounded-xl bg-signal px-5 py-2.5 font-semibold text-on-signal hover:brightness-110">
         Criar canal
       </button>
     </section>

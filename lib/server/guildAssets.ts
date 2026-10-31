@@ -29,6 +29,12 @@ export async function cleanupGuildAssets(guild: Pick<Guild, "id" | "icon" | "ban
     return replaced.includes(url) || a.createdAt.getTime() < before;
   });
   if (!stale.length) return;
-  await removeFiles(stale.map((a) => a.url));
-  await db.guildAsset.deleteMany({ where: { id: { in: stale.map((a) => a.id) } } });
+  // sem Blob, a foto de perfil também mora nesta tabela: em uso, ela não é órfã
+  const inDatabase = stale.filter((a) => !a.url).map(assetUrl);
+  const avatars = inDatabase.length ? await db.user.findMany({ where: { avatar: { in: inDatabase } }, select: { avatar: true } }) : [];
+  const inUse = new Set(avatars.map((u) => u.avatar));
+  const removable = stale.filter((a) => !inUse.has(assetUrl(a)));
+  if (!removable.length) return;
+  await removeFiles(removable.map((a) => a.url));
+  await db.guildAsset.deleteMany({ where: { id: { in: removable.map((a) => a.id) } } });
 }

@@ -2,14 +2,16 @@
 
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { AnimatePresence, motion, useDragControls, useMotionValue } from "framer-motion";
-import { GripHorizontal, Maximize, Minimize, Music, X } from "lucide-react";
+import { GripHorizontal, Info, Maximize, Minimize, Music, PictureInPicture2, X } from "lucide-react";
 import { displayName, useStore } from "@/lib/client/store";
 import type { ApiSound } from "@/lib/client/types";
 import { setWindowPos, useVoicePrefs } from "@/lib/client/voicePrefs";
 import { PersonControls } from "./PersonControls";
 import { CallTimer } from "./CallTimer";
+import { LeaveButton } from "./LeaveButton";
 import { Soundboard } from "./Soundboard";
 import { Tile } from "./Tile";
+import { PIP_UNSUPPORTED, type PipMode } from "./useParticipantPip";
 import type { Tile as TileData } from "./useVoiceRoom";
 
 const DESKTOP = "(min-width: 768px)";
@@ -24,6 +26,8 @@ export function useIsDesktop() {
   return useSyncExternalStore(subscribeDesktop, () => window.matchMedia(DESKTOP).matches, () => true);
 }
 
+type PipControl = { mode: PipMode; active: boolean; error: string; onToggle: () => void };
+
 type CallProps = {
   tiles: TileData[];
   startedAt: number | null;
@@ -34,6 +38,8 @@ type CallProps = {
   cooling: boolean;
   onToggleBoard: () => void;
   onPlay: (sound: ApiSound) => void;
+  onLeave: () => void;
+  pip: PipControl;
   sheetFooter?: React.ReactNode; // controles extras no bottom sheet, onde a barra lateral fica escondida
 };
 
@@ -73,7 +79,7 @@ export function CallWindow({
 function CallBody({ tiles, guildId, sounds, canPlaySounds, boardOpen, cooling, onPlay }: CallProps) {
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const nameOf = useTileName();
-  const screenOwner = menuFor ? tiles.some((t) => t.identity === menuFor && t.kind === "screen") : false;
+  const screenOwner = menuFor ? tiles.some((t) => t.identity === menuFor && t.kind === "screen" && t.screenAudio) : false;
   return (
     <>
       <div className={`grid gap-2 ${tiles.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
@@ -126,6 +132,41 @@ function WindowButtons({
   );
 }
 
+function PipButton({ pip }: { pip: PipControl }) {
+  // sem suporte o botão some, e o motivo fica no ícone
+  if (pip.mode === "none") {
+    return (
+      <span title={PIP_UNSUPPORTED} aria-label={PIP_UNSUPPORTED} role="img" className="flex h-9 w-9 items-center justify-center text-on-chrome-muted">
+        <Info size={16} />
+      </span>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={pip.onToggle}
+      title={pip.mode === "video" ? "Abre uma janela de vídeo com a lista. Os botões de mudo e sair ficam aqui na aba." : "Abre uma janela que fica por cima de outras abas e apps."}
+      className={`flex h-11 items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold text-on-chrome hover:bg-chrome-3 md:h-9 ${pip.active ? "bg-chrome-3" : "bg-chrome-2"}`}
+    >
+      <PictureInPicture2 size={16} className="shrink-0" />
+      {pip.active ? "Recolher janela" : "Destacar janela"}
+    </button>
+  );
+}
+
+// Rodapé da janela: sair fica aqui, longe dos botões de janela lá de cima.
+function CallFooter({ onLeave, pip }: { onLeave: () => void; pip: PipControl }) {
+  return (
+    <>
+      {pip.error && <p className="mt-2 px-1 text-xs text-on-chrome-muted">{pip.error}</p>}
+      <div className="mt-2 flex items-center justify-between gap-2 border-t border-chrome-3 pt-2">
+        <PipButton pip={pip} />
+        <LeaveButton onLeave={onLeave} />
+      </div>
+    </>
+  );
+}
+
 function FloatingWindow({ onClose, onExpand, ...call }: CallProps & { onClose: () => void; onExpand: () => void }) {
   const prefs = useVoicePrefs();
   const bounds = useRef<HTMLDivElement>(null);
@@ -165,13 +206,13 @@ function FloatingWindow({ onClose, onExpand, ...call }: CallProps & { onClose: (
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="pointer-events-auto absolute right-4 top-14 w-[420px] max-w-[calc(100vw-2rem)] rounded-2xl border border-chrome-3 bg-chrome p-2 shadow-hard"
+        className="pointer-events-auto absolute right-4 top-14 w-[420px] max-w-[calc(100vw-2rem)] rounded-2xl border border-chrome-3 bg-chrome p-2 shadow-pop"
         data-call-window
       >
         <div className="mb-1 flex items-center justify-between">
           <div
             onPointerDown={(e) => controls.start(e)}
-            className="flex flex-1 cursor-grab touch-none select-none items-center gap-2 rounded px-1 py-0.5 text-faint active:cursor-grabbing"
+            className="flex flex-1 cursor-grab touch-none select-none items-center gap-2 rounded px-1 py-0.5 text-on-chrome-muted active:cursor-grabbing"
             data-drag-handle
           >
             <GripHorizontal size={16} />
@@ -189,6 +230,7 @@ function FloatingWindow({ onClose, onExpand, ...call }: CallProps & { onClose: (
         <div className="scroll-thin max-h-[calc(100dvh-7rem)] overflow-y-auto">
           <CallBody {...call} />
         </div>
+        <CallFooter onLeave={call.onLeave} pip={call.pip} />
       </motion.div>
     </div>
   );
@@ -214,7 +256,7 @@ function BottomSheet({ onClose, onExpand, ...call }: CallProps & { onClose: () =
         data-call-sheet
       >
         <div className="mb-1 flex items-center justify-between px-1">
-          <span className="flex items-center gap-2 text-xs font-semibold text-faint">
+          <span className="flex items-center gap-2 text-xs font-semibold text-on-chrome-muted">
             {call.tiles.filter((t) => t.kind === "camera").length} na chamada
             <CallTimer startedAt={call.startedAt} />
           </span>
@@ -228,6 +270,7 @@ function BottomSheet({ onClose, onExpand, ...call }: CallProps & { onClose: () =
         </div>
         <CallBody {...call} />
         {call.sheetFooter}
+        <CallFooter onLeave={call.onLeave} pip={call.pip} />
       </motion.div>
     </>
   );
@@ -252,12 +295,12 @@ function Expanded({ onCollapse, ...call }: CallProps & { onCollapse: () => void 
 
   const focus = tiles.find((t) => t.key === pinned) ?? tiles.find((t) => t.kind === "screen") ?? tiles.find((t) => t.video) ?? tiles[0];
   const rest = tiles.filter((t) => t.key !== focus?.key);
-  const screenOwner = menuFor ? tiles.some((t) => t.identity === menuFor && t.kind === "screen") : false;
+  const screenOwner = menuFor ? tiles.some((t) => t.identity === menuFor && t.kind === "screen" && t.screenAudio) : false;
 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col gap-2 bg-chrome p-2 pt-[max(0.5rem,env(safe-area-inset-top))]" data-call-expanded>
       <div className="flex shrink-0 items-center justify-between px-1">
-        <span className="flex items-center gap-2 text-xs font-semibold text-faint">
+        <span className="flex items-center gap-2 text-xs font-semibold text-on-chrome-muted">
           {tiles.filter((t) => t.kind === "camera").length} na chamada
           <CallTimer startedAt={call.startedAt} />
         </span>
@@ -272,12 +315,15 @@ function Expanded({ onCollapse, ...call }: CallProps & { onCollapse: () => void 
             </button>
           )}
           <button
-            aria-label="Sair da tela cheia"
+            aria-label="Reduzir a chamada"
             onClick={onCollapse}
             className="flex h-8 items-center gap-1.5 rounded px-2 text-sm font-semibold text-on-chrome hover:bg-chrome-3"
           >
-            <Minimize size={16} /> Sair
+            <Minimize size={16} /> Reduzir
           </button>
+          <PipButton pip={call.pip} />
+          <span className="mx-1.5 h-6 w-px bg-chrome-3" aria-hidden />
+          <LeaveButton onLeave={call.onLeave} />
         </div>
       </div>
       <div className="min-h-0 flex-1">

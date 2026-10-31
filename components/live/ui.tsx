@@ -2,17 +2,18 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { ApiUser, Status } from "@/lib/client/types";
 
+// por extenso: o Tailwind só gera as variáveis cujo nome encontra no código
 const PALETTE = [
-  "var(--color-signal)",
-  "var(--color-teal)",
-  "var(--color-mustard)",
-  "var(--color-lilac)",
-  "var(--color-rose)",
-  "var(--color-sky)",
-  "var(--color-ink-3)",
+  "var(--color-avatar-1)",
+  "var(--color-avatar-2)",
+  "var(--color-avatar-3)",
+  "var(--color-avatar-4)",
+  "var(--color-avatar-5)",
+  "var(--color-avatar-6)",
+  "var(--color-avatar-7)",
 ];
 
 export function colorFor(id: string | undefined) {
@@ -36,12 +37,20 @@ const STATUS_BG: Record<Status, string> = {
 };
 
 export const STATUS_PT: Record<Status, string> = {
-  online: "Disponível",
+  online: "Online",
   idle: "Ausente",
   dnd: "Não perturbe",
   offline: "Offline",
   invisible: "Invisível",
 };
+
+// foto que não carrega mais (link fora do ar, servidor apagado) volta para as iniciais
+function AvatarPhoto({ src, initials }: { src: string; initials: React.ReactNode }) {
+  const [broken, setBroken] = useState(false);
+  if (broken) return initials;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src={src} alt="" onError={() => setBroken(true)} className="h-full w-full rounded-full object-cover" />;
+}
 
 export function UserAvatar({
   user,
@@ -56,18 +65,20 @@ export function UserAvatar({
 }) {
   const name = user?.global_name || user?.username || "?";
   const dot = Math.max(10, Math.round(size * 0.32));
+  const initials = (
+    <span
+      className="flex h-full w-full items-center justify-center rounded-full font-display font-bold text-on-avatar"
+      style={{ background: colorFor(user?.id), fontSize: size * 0.36 }}
+    >
+      {initialsOf(name)}
+    </span>
+  );
   return (
     <span className="relative inline-flex shrink-0" style={{ width: size, height: size }}>
       {user?.avatar ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={user.avatar} alt="" className="h-full w-full rounded-full object-cover" />
+        <AvatarPhoto key={user.avatar} src={user.avatar} initials={initials} />
       ) : (
-        <span
-          className="flex h-full w-full items-center justify-center rounded-full font-display font-bold text-sheet"
-          style={{ background: colorFor(user?.id), fontSize: size * 0.36 }}
-        >
-          {initialsOf(name)}
-        </span>
+        initials
       )}
       {status && (
         <span
@@ -84,11 +95,13 @@ export function Modal({
   open,
   onClose,
   title,
+  wide,
   children,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   useEffect(() => {
@@ -115,11 +128,11 @@ export function Modal({
             initial={{ y: 16, scale: 0.98 }}
             animate={{ y: 0, scale: 1 }}
             exit={{ y: 16, scale: 0.98 }}
-            className="scroll-thin max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-ink bg-sheet p-4 text-ink shadow-hard sm:p-6"
+            className={`scroll-thin max-h-[calc(100dvh-2rem)] w-full ${wide ? "max-w-2xl" : "max-w-md"} overflow-y-auto rounded-2xl border border-line bg-sheet p-4 text-ink shadow-pop sm:p-6`}
           >
             <div className="flex items-start justify-between gap-4">
-              <h2 className="font-display text-2xl font-extrabold">{title}</h2>
-              <button aria-label="Fechar" onClick={onClose} className="rounded-md p-1 text-muted hover:bg-paper-2 hover:text-ink">
+              <h2 className="font-display text-xl font-bold">{title}</h2>
+              <button aria-label="Fechar" onClick={onClose} className="rounded-lg p-1 text-muted hover:bg-paper-2 hover:text-ink">
                 <X size={20} />
               </button>
             </div>
@@ -138,14 +151,14 @@ export function Field({
 }: React.InputHTMLAttributes<HTMLInputElement> & { label: string; error?: string }) {
   return (
     <label className="block">
-      <span className={`font-mono text-[11px] font-semibold uppercase tracking-wider ${error ? "text-dnd" : "text-muted"}`}>
+      <span className={`text-[11px] font-bold uppercase tracking-[0.08em] ${error ? "text-dnd" : "text-muted"}`}>
         {label}
         {error && <span className="normal-case tracking-normal"> · {error}</span>}
       </span>
       <input
         {...props}
-        className={`mt-1.5 w-full rounded-lg border bg-paper px-3 py-2.5 text-base outline-none focus:shadow-hard-sm md:text-[15px] ${
-          error ? "border-dnd" : "border-ink"
+        className={`mt-1.5 w-full rounded-xl border bg-paper px-3 py-2.5 text-base outline-none focus:ring-2 focus:ring-signal/40 md:text-[15px] ${
+          error ? "border-dnd" : "border-line focus:border-signal"
         }`}
       />
     </label>
@@ -157,7 +170,7 @@ export function PrimaryButton({ busy, children, ...props }: React.ButtonHTMLAttr
     <button
       {...props}
       disabled={busy || props.disabled}
-      className={`rounded-full border border-ink bg-signal px-5 py-2.5 font-semibold text-on-signal shadow-hard-sm transition-all hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none disabled:opacity-50 ${
+      className={`glow rounded-xl bg-signal px-5 py-2.5 font-semibold text-on-signal hover:brightness-110 disabled:opacity-50 ${
         props.className ?? ""
       }`}
     >
@@ -170,7 +183,7 @@ export function GhostButton(props: React.ButtonHTMLAttributes<HTMLButtonElement>
   return (
     <button
       {...props}
-      className={`rounded-full border border-ink/30 px-5 py-2.5 font-semibold text-ink-3 hover:border-ink hover:text-ink ${props.className ?? ""}`}
+      className={`rounded-xl border border-line px-5 py-2.5 font-semibold text-ink-3 hover:border-line-strong hover:text-ink ${props.className ?? ""}`}
     />
   );
 }

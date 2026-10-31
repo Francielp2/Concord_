@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import type { Participant, RemoteTrack, Room, Track as TrackT, VideoTrack } from "livekit-client";
 import { api } from "@/lib/client/api";
+import { SCREEN_AUDIO_ENDED_NOTICE, SCREEN_ECHO_NOTICE, SCREEN_NO_AUDIO_NOTICE, canRestrictOwnAudio, screenCaptureOptions } from "@/lib/client/media";
 import { playCue, playSound, unlockAudio } from "@/lib/client/sounds";
 import type { ApiSound } from "@/lib/client/types";
 import { sendVoiceLeaveBeacon } from "@/lib/client/voice";
@@ -18,6 +19,7 @@ export type Tile = {
   video: VideoTrack | null;
   speaking: boolean;
   micOn: boolean;
+  screenAudio: boolean; // a transmissão desta pessoa está indo com som
 };
 
 const SOUND_TOPIC = "soundboard";
@@ -28,7 +30,11 @@ const CUE_GAP_MS = 1500;
 
 // valores do enum Track.Source: o livekit-client só carrega quando alguém entra numa chamada
 const MIC = "microphone" as TrackT.Source.Microphone;
+const SCREEN = "screen_share" as TrackT.Source.ScreenShare;
 const SCREEN_AUDIO = "screen_share_audio" as TrackT.Source.ScreenShareAudio;
+// som de tela é música e filme: sem cortar nos silêncios, e com mais banda que a voz
+const SCREEN_AUDIO_PUBLISH = { audioPreset: { maxBitrate: 128_000 }, dtx: false, red: false };
+const SCREEN_NOTICES = [SCREEN_NO_AUDIO_NOTICE, SCREEN_AUDIO_ENDED_NOTICE, SCREEN_ECHO_NOTICE];
 
 function applyAudio(room: Room, deaf: boolean, prefs: VoicePrefs) {
   for (const p of room.remoteParticipants.values()) {
@@ -109,7 +115,7 @@ export function useVoiceRoom({
       const refresh = () => {
         const speaking = new Set(r.activeSpeakers.map((p) => p.identity));
         const toTiles = (p: Participant, local: boolean): Tile[] => {
-          const base = { identity: p.identity, local, speaking: speaking.has(p.identity), micOn: p.isMicrophoneEnabled };
+          const base = { identity: p.identity, local, speaking: speaking.has(p.identity), micOn: p.isMicrophoneEnabled, screenAudio: !!p.getTrackPublication(SCREEN_AUDIO) };
           const cam = p.getTrackPublication(Track.Source.Camera)?.videoTrack as VideoTrack | undefined;
           const shared = p.getTrackPublication(Track.Source.ScreenShare)?.videoTrack as VideoTrack | undefined;
           return [
@@ -125,6 +131,11 @@ export function useVoiceRoom({
         setCamera(r.localParticipant.isCameraEnabled);
         setScreen(r.localParticipant.isScreenShareEnabled);
       };
+
+      // a tela parou (inclusive pelo botão do navegador): os avisos sobre o som dela perdem o sentido
+      r.on(RoomEvent.LocalTrackUnpublished, (pub) => {
+        if (pub.source === SCREEN) setNotice((n) => (SCREEN_NOTICES.includes(n) ? "" : n));
+      });
 
       r.on(RoomEvent.TrackSubscribed, (track: RemoteTrack) => {
         if (track.kind === Track.Kind.Audio) {
@@ -275,7 +286,7 @@ export function useVoiceRoom({
     const next = !room.localParticipant.isScreenShareEnabled;
     setNotice("");
     try {
-      await room.localParticipant.setScreenShareEnabled(next, { audio: true });
+      await room.localParticipant.setScreenShareEnabled(next, screenCaptureOptions(), SCREEN_AUDIO_PUBLISH);
     } catch (err) {
       setScreen(false);
       const e = err as DOMException;
@@ -289,8 +300,18 @@ export function useVoiceRoom({
     }
     setScreen(next);
     if (next) {
-      if (!room.localParticipant.getTrackPublication(SCREEN_AUDIO)) {
-        setNotice("Sua tela está indo sem som. O áudio só funciona no Chrome e no Edge, marcando \"Compartilhar áudio\" na janela de escolha.");
+      const local = room.localParticipant;
+      const audio = local.getTrackPublication(SCREEN_AUDIO)?.track?.mediaStreamTrack;
+      const video = local.getTrackPublication(SCREEN)?.track?.mediaStreamTrack;
+      if (!audio) setNotice(SCREEN_NO_AUDIO_NOTICE);
+      else {
+        if (video?.getSettings().displaySurface === "monitor" && !canRestrictOwnAudio()) setNotice(SCREEN_ECHO_NOTICE);
+        // encerrar a captura inteira também termina o áudio: só avisa se a imagem continuar
+        audio.addEventListener(
+          "ended",
+          () => setTimeout(() => video?.readyState === "live" && setNotice(SCREEN_AUDIO_ENDED_NOTICE)),
+          { once: true },
+        );
       }
     }
     return next;

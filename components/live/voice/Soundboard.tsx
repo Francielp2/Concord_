@@ -15,7 +15,7 @@ export function Soundboard({
 }) {
   const prefs = useVoicePrefs();
   return (
-    <div className="rounded-lg bg-chrome-2 p-2 text-xs text-on-chrome">
+    <div className="rounded-xl bg-chrome-2 p-2 text-xs text-on-chrome">
       <label className="mb-2 flex items-center gap-2">
         <Volume2 size={14} className="shrink-0" />
         <span className="shrink-0">Volume dos sons</span>
@@ -36,7 +36,7 @@ export function Soundboard({
               key={s.id}
               disabled={cooling}
               onClick={() => onPlay(s)}
-              className="truncate rounded-md bg-chrome-3 px-2 py-2 font-semibold hover:bg-signal hover:text-on-signal disabled:opacity-40"
+              className="truncate rounded-lg bg-chrome-3 px-2 py-2 font-semibold hover:bg-signal hover:text-on-signal disabled:opacity-40"
             >
               {s.name}
             </button>

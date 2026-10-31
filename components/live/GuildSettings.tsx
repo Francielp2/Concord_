@@ -5,7 +5,7 @@ import { Check, Copy, Play, Trash2, Upload } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { MAX_SOUND_SECONDS, measureAudio, playSound, unlockAudio } from "@/lib/client/sounds";
 import { useStore } from "@/lib/client/store";
-import { accentVars, colorToHex, hexToColor, useBlackBackground } from "@/lib/client/theme";
+import { THEMES, accentVars, colorToHex, hexToColor } from "@/lib/client/theme";
 import { Perm, hasPerm, type ApiGuild } from "@/lib/client/types";
 import { EmojiGlyph } from "./Emoji";
 import { Field, GhostButton, PrimaryButton, initialsOf } from "./ui";
@@ -29,13 +29,13 @@ export function GuildSettingsTabs({ guild, onClose }: { guild: ApiGuild; onClose
 
   return (
     <>
-      <div className="scroll-ink mb-4 flex gap-1 overflow-x-auto rounded-full border border-ink p-1 text-sm font-semibold">
+      <div className="scroll-ink mb-4 flex gap-1 overflow-x-auto rounded-xl bg-paper-2 p-1 text-sm font-semibold">
         {tabs.map(([id, label]) => (
           <button
             key={id}
             type="button"
             onClick={() => setTab(id)}
-            className={`flex-1 whitespace-nowrap rounded-full px-2.5 py-1.5 ${tab === id ? "bg-ink text-sheet" : "text-ink-3 hover:text-ink"}`}
+            className={`flex-1 whitespace-nowrap rounded-lg px-2.5 py-1.5 ${tab === id ? "bg-sheet text-ink shadow-soft" : "text-muted hover:text-ink"}`}
           >
             {label}
           </button>
@@ -50,6 +50,7 @@ export function GuildSettingsTabs({ guild, onClose }: { guild: ApiGuild; onClose
 }
 
 const ACCENT_DEFAULT = "#ff4f1f";
+const ACCENT_SUGGESTIONS = ["#4a66ff", "#7c5cff", "#c2410c", "#8a5a2b", "#0f8a6d", "#d6336c", "#0284c7", "#ca8a04"];
 const IMAGE_TYPES = "image/png,image/gif,image/jpeg,image/webp";
 
 // Imagem escolhida ainda sem enviar: só sobe ao salvar, então a pré-visualização não publica nada.
@@ -86,7 +87,7 @@ function useImageDraft(initial: string | null | undefined, maxBytes: number, onE
 function ImagePicker({ label, url, onPick, onRemove }: { label: string; url: string | null; onPick: (f: File | null) => void; onRemove: () => void }) {
   return (
     <div className="flex items-center gap-2">
-      <label className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-ink bg-paper px-3 py-2 text-sm font-semibold hover:bg-paper-2">
+      <label className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-line-strong bg-paper px-3 py-2 text-sm font-semibold hover:bg-paper-2">
         <Upload size={15} />
         {label}
         <input
@@ -117,7 +118,6 @@ function General({ guild, onClose }: { guild: ApiGuild; onClose: () => void }) {
   const [busy, setBusy] = useState(false);
   const icon = useImageDraft(guild.icon, 1024 * 1024, setError);
   const banner = useImageDraft(guild.banner, 4 * 1024 * 1024, setError);
-  const black = useBlackBackground();
 
   async function upload(kind: "icon" | "banner", file: File) {
     const form = new FormData();
@@ -147,23 +147,39 @@ function General({ guild, onClose }: { guild: ApiGuild; onClose: () => void }) {
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <GuildPreview name={name} description={description} icon={icon.url} banner={banner.url} style={accentVars(accent, black)} />
+      <GuildPreview name={name} icon={icon.url} banner={banner.url} accent={accent} memberCount={guild.member_count} />
       <Field label="Nome" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
       <Field label="Descrição" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={300} />
       <div className="space-y-2">
-        <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-muted">Imagens</span>
+        <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">Imagens</span>
         <ImagePicker label="Ícone (até 1 MB)" url={icon.url} onPick={icon.pick} onRemove={icon.remove} />
         <ImagePicker label="Banner (até 4 MB)" url={banner.url} onPick={banner.pick} onRemove={banner.remove} />
       </div>
       <div>
-        <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-muted">Cor de destaque</span>
-        <div className="mt-1.5 flex items-center gap-3">
+        <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">Cor de destaque</span>
+        <div className="mt-1.5 flex flex-wrap gap-1.5" role="group" aria-label="Cores sugeridas">
+          {ACCENT_SUGGESTIONS.map((hex) => {
+            const on = accent != null && colorToHex(accent) === hex;
+            return (
+              <button
+                key={hex}
+                type="button"
+                aria-label={`Usar a cor ${hex}`}
+                aria-pressed={on}
+                onClick={() => setAccent(hexToColor(hex))}
+                style={{ background: hex }}
+                className={`h-8 w-8 rounded-full border border-line hover:scale-110 ${on ? "ring-2 ring-ink ring-offset-2 ring-offset-sheet" : ""}`}
+              />
+            );
+          })}
+        </div>
+        <div className="mt-2 flex items-center gap-3">
           <input
             type="color"
             aria-label="Cor de destaque"
             value={accent == null ? ACCENT_DEFAULT : colorToHex(accent)}
             onChange={(e) => setAccent(hexToColor(e.target.value))}
-            className="h-10 w-14 cursor-pointer rounded-lg border border-ink bg-paper p-1"
+            className="h-10 w-14 cursor-pointer rounded-xl border border-line-strong bg-paper p-1"
           />
           <span className="font-mono text-sm">{accent == null ? "Padrão" : colorToHex(accent)}</span>
           {accent != null && (
@@ -186,48 +202,51 @@ function General({ guild, onClose }: { guild: ApiGuild; onClose: () => void }) {
   );
 }
 
-// Miniatura da barra do servidor, com as mesmas variáveis que valem depois de salvar.
+// Cabeçalho da barra lateral nos três temas, com as mesmas variáveis que valem depois de salvar.
 function GuildPreview({
   name,
-  description,
   icon,
   banner,
-  style,
+  accent,
+  memberCount,
 }: {
   name: string;
-  description: string;
   icon: string | null;
   banner: string | null;
-  style: React.CSSProperties | undefined;
+  accent: number | null;
+  memberCount: number;
 }) {
   return (
-    <div style={style} className="overflow-hidden rounded-xl border border-ink/30 bg-paper-2" data-guild-preview aria-label="Pré-visualização">
-      {banner && (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={banner} alt="" className="h-20 w-full object-cover" />
-      )}
-      <div className="flex items-center gap-2 border-b border-ink/15 px-3 py-2">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-signal font-display text-xs font-bold text-on-signal">
-          {icon ? (
+    <div className="grid gap-2 sm:grid-cols-3" data-guild-preview aria-label="Pré-visualização nos três temas">
+      {THEMES.map((t) => (
+        <div key={t.id} data-theme={t.id} style={accentVars(accent, t.id)} className="overflow-hidden rounded-2xl border border-line bg-paper-2 text-ink">
+          {banner && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={icon} alt="" className="h-full w-full object-cover" />
-          ) : (
-            initialsOf(name)
+            <img src={banner} alt="" className="h-14 w-full object-cover" />
           )}
-        </span>
-        <span className="min-w-0 leading-tight">
-          <b className="block truncate font-display text-sm">{name || "Servidor"}</b>
-          {description && <span className="block truncate text-xs text-muted">{description}</span>}
-        </span>
-      </div>
-      <div className="space-y-1.5 p-2 text-sm">
-        <div className="rounded-md bg-channel-active px-2 py-1 font-semibold"># canal-ativo</div>
-        <p className="px-2 text-ink-2">
-          Oi <span className="rounded bg-signal/15 px-1 font-semibold text-signal-ink">@alguém</span>, olha o{" "}
-          <span className="text-signal-ink underline underline-offset-2">link</span>
-        </p>
-        <span className="ml-2 inline-block rounded-full bg-signal px-3 py-1 text-xs font-semibold text-on-signal">Botão</span>
-      </div>
+          <div className="flex items-center gap-2 border-b border-line px-2.5 py-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-[10px] bg-signal font-display text-xs font-bold text-on-signal">
+              {icon ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={icon} alt="" className="h-full w-full object-cover" />
+              ) : (
+                initialsOf(name)
+              )}
+            </span>
+            <span className="min-w-0 leading-tight">
+              <b className="block truncate font-display text-sm">{name || "Servidor"}</b>
+              <span className="block truncate text-[11px] text-muted">
+                Comunidade • {memberCount} {memberCount === 1 ? "membro" : "membros"}
+              </span>
+            </span>
+          </div>
+          <div className="space-y-1.5 p-2 text-xs">
+            <div className="glow rounded-lg bg-channel-active px-2 py-1 font-semibold"># canal-ativo</div>
+            <p className="truncate px-2 font-semibold text-signal-ink">{t.name}</p>
+            <span className="ml-2 inline-block rounded-full bg-signal px-2.5 py-0.5 font-semibold text-on-signal">Botão</span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -272,7 +291,7 @@ function Emojis({ guild }: { guild: ApiGuild }) {
             maxLength={32}
           />
         </div>
-        <label className="flex h-[46px] cursor-pointer items-center gap-1.5 rounded-lg border border-ink bg-paper px-3 text-sm font-semibold hover:bg-paper-2">
+        <label className="flex h-[46px] cursor-pointer items-center gap-1.5 rounded-xl border border-line-strong bg-paper px-3 text-sm font-semibold hover:bg-paper-2">
           <Upload size={15} />
           {file ? "Trocar" : "Imagem"}
           <input
@@ -295,13 +314,13 @@ function Emojis({ guild }: { guild: ApiGuild }) {
 
       <ul className="scroll-thin mt-4 max-h-64 space-y-1 overflow-y-auto">
         {emojis.map((e) => (
-          <li key={e.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-paper">
+          <li key={e.id} className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-paper">
             <EmojiGlyph value={`${e.name}:${e.id}`} size={28} />
             <span className="flex-1 font-mono text-sm">:{e.name}:</span>
             <button
               aria-label={`Apagar ${e.name}`}
               onClick={() => api(`/guilds/${guild.id}/emojis/${e.id}`, { method: "DELETE" }).catch((err) => setError(err.message))}
-              className="rounded-md p-1.5 text-muted hover:bg-dnd/10 hover:text-dnd"
+              className="rounded-lg p-1.5 text-muted hover:bg-dnd/10 hover:text-dnd"
             >
               <Trash2 size={15} />
             </button>
@@ -356,7 +375,7 @@ function Sounds({ guild }: { guild: ApiGuild }) {
         <div className="min-w-40 flex-1">
           <Field label="Nome" value={name} onChange={(e) => setName(e.target.value)} placeholder="buzina" maxLength={32} />
         </div>
-        <label className="flex h-[46px] shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-ink bg-paper px-3 text-sm font-semibold hover:bg-paper-2">
+        <label className="flex h-[46px] shrink-0 cursor-pointer items-center gap-1.5 rounded-xl border border-line-strong bg-paper px-3 text-sm font-semibold hover:bg-paper-2">
           <Upload size={15} />
           {file ? "Trocar" : "Áudio"}
           <input
@@ -379,14 +398,14 @@ function Sounds({ guild }: { guild: ApiGuild }) {
 
       <ul className="scroll-thin mt-4 max-h-64 space-y-1 overflow-y-auto">
         {sounds.map((s) => (
-          <li key={s.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-paper">
+          <li key={s.id} className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-paper">
             <button
               aria-label={`Ouvir ${s.name}`}
               onClick={() => {
                 unlockAudio();
                 playSound(s.url, 0.8).catch((err) => setError(err.message));
               }}
-              className="rounded-md p-1.5 text-ink-3 hover:bg-paper-2 hover:text-ink"
+              className="rounded-lg p-1.5 text-ink-3 hover:bg-paper-2 hover:text-ink"
             >
               <Play size={15} />
             </button>
@@ -395,7 +414,7 @@ function Sounds({ guild }: { guild: ApiGuild }) {
             <button
               aria-label={`Apagar ${s.name}`}
               onClick={() => api(`/guilds/${guild.id}/sounds/${s.id}`, { method: "DELETE" }).catch((err) => setError(err.message))}
-              className="rounded-md p-1.5 text-muted hover:bg-dnd/10 hover:text-dnd"
+              className="rounded-lg p-1.5 text-muted hover:bg-dnd/10 hover:text-dnd"
             >
               <Trash2 size={15} />
             </button>
@@ -452,11 +471,11 @@ function Webhooks({ guild }: { guild: ApiGuild }) {
       <form onSubmit={create} className="mt-3 space-y-2">
         <Field label="Nome" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} />
         <label className="block">
-          <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-muted">Canal</span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-muted">Canal</span>
           <select
             value={channelId}
             onChange={(e) => setChannelId(e.target.value)}
-            className="mt-1.5 w-full rounded-lg border border-ink bg-paper px-3 py-2.5 text-[15px] outline-none"
+            className="mt-1.5 w-full rounded-xl border border-line-strong bg-paper px-3 py-2.5 text-[15px] outline-none"
           >
             {textChannels.map((c) => (
               <option key={c.id} value={c.id}>
@@ -473,10 +492,10 @@ function Webhooks({ guild }: { guild: ApiGuild }) {
       </form>
 
       {fresh?.url && (
-        <div className="mt-3 rounded-lg border border-mustard bg-mustard/15 p-3">
+        <div className="mt-3 rounded-xl border border-mustard bg-mustard/15 p-3">
           <p className="text-xs font-semibold">Copia agora: esse link não aparece de novo.</p>
           <div className="mt-2 flex items-center gap-2">
-            <input readOnly value={fresh.url} className="min-w-0 flex-1 rounded border border-ink/20 bg-sheet px-2 py-1 font-mono text-xs" />
+            <input readOnly value={fresh.url} className="min-w-0 flex-1 rounded border border-line bg-sheet px-2 py-1 font-mono text-xs" />
             <button
               onClick={async () => {
                 await navigator.clipboard.writeText(fresh.url!).catch(() => {});
@@ -494,7 +513,7 @@ function Webhooks({ guild }: { guild: ApiGuild }) {
 
       <ul className="mt-4 space-y-1">
         {(hooks ?? []).map((h) => (
-          <li key={h.id} className="flex items-center gap-3 rounded-lg px-2 py-1.5 hover:bg-paper">
+          <li key={h.id} className="flex items-center gap-3 rounded-xl px-2 py-1.5 hover:bg-paper">
             <span className="min-w-0 flex-1 leading-tight">
               <b className="block truncate text-sm">{h.name}</b>
               <span className="text-xs text-muted">#{guild.channels.find((c) => c.id === h.channel_id)?.name ?? "canal"}</span>
@@ -502,7 +521,7 @@ function Webhooks({ guild }: { guild: ApiGuild }) {
             <button
               aria-label={`Apagar ${h.name}`}
               onClick={() => remove(h.id)}
-              className="rounded-md p-1.5 text-muted hover:bg-dnd/10 hover:text-dnd"
+              className="rounded-lg p-1.5 text-muted hover:bg-dnd/10 hover:text-dnd"
             >
               <Trash2 size={15} />
             </button>

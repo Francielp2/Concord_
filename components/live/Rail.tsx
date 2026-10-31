@@ -24,28 +24,26 @@ function Item({
   return (
     <div className="group relative flex w-full justify-center">
       <motion.span
-        className="absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-r bg-on-chrome"
+        className="absolute left-0 top-1/2 w-1 -translate-y-1/2 rounded-r bg-on-rail"
         initial={false}
         animate={{ height: active ? 36 : pill ? 8 : 0, opacity: active || pill ? 1 : 0 }}
         transition={{ type: "spring", stiffness: 500, damping: 32 }}
       />
       <button
         aria-label={label}
+        title={label}
         onClick={onClick}
-        className={`relative flex h-12 w-12 items-center justify-center transition-[border-radius] duration-200 ${
-          active ? "rounded-[14px]" : "rounded-[24px] group-hover:rounded-[14px]"
+        className={`relative flex h-12 w-12 items-center justify-center rounded-[15px] duration-150 hover:scale-105 ${
+          active ? "ring-2 ring-signal ring-offset-2 ring-offset-rail" : ""
         }`}
       >
         {children}
         {!!badge && (
-          <span className="absolute -right-1 -bottom-1 flex h-5 min-w-5 items-center justify-center rounded-full border-[3px] border-chrome bg-signal px-1 font-mono text-[10px] font-bold text-on-signal">
+          <span className="absolute -right-1 -bottom-1 flex h-5 min-w-5 items-center justify-center rounded-full border-[3px] border-rail bg-signal px-1 text-[10px] font-bold tabular-nums text-on-signal">
             {badge > 99 ? "99+" : badge}
           </span>
         )}
       </button>
-      <span className="pointer-events-none absolute left-[68px] top-1/2 z-50 hidden -translate-y-1/2 whitespace-nowrap rounded-md border border-ink bg-sheet px-2.5 py-1.5 text-sm font-semibold text-ink shadow-hard-sm group-hover:block">
-        {label}
-      </span>
     </div>
   );
 }
@@ -55,18 +53,18 @@ export function Rail({ active, onSelect, onAdd }: { active: string; onSelect: (i
   const dmMentions = Object.values(state.dms).reduce((n, c) => n + mentionCount(state, c.id), 0);
 
   return (
-    <nav className="scroll-ink flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-chrome py-3">
+    <nav className="scroll-ink flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-rail py-3">
       <Item active={active === "home"} label="Mensagens diretas" onClick={() => onSelect("home")} badge={dmMentions}>
         <span
           className={`flex h-full w-full items-center justify-center rounded-[inherit] transition-colors ${
-            active === "home" ? "bg-signal" : "bg-chrome-2 hover:bg-signal"
+            active === "home" ? "glow bg-signal" : "bg-rail-2 hover:bg-rail-3"
           }`}
         >
-          <LogoMark size={28} inverted />
+          <LogoMark size={28} stroke={active === "home" ? "var(--color-on-signal)" : "var(--color-on-rail)"} />
         </span>
       </Item>
 
-      <span className="my-1 h-0.5 w-8 rounded bg-chrome-3" />
+      <span className="my-1 h-0.5 w-8 rounded bg-rail-3" />
 
       {state.guildOrder.map((id) => {
         const g = state.guilds[id];
@@ -84,7 +82,7 @@ export function Rail({ active, onSelect, onAdd }: { active: string; onSelect: (i
             ) : (
               <span
                 className="flex h-full w-full items-center justify-center rounded-[inherit] font-display text-[15px] font-bold"
-                style={{ background: on ? color : "var(--color-chrome-2)", color: on ? "var(--color-on-chrome)" : color }}
+                style={on ? { background: color, color: "var(--color-on-avatar)" } : { background: "var(--color-rail-2)", color: "var(--color-on-rail)" }}
               >
                 {initialsOf(g.name)}
               </span>
@@ -94,7 +92,7 @@ export function Rail({ active, onSelect, onAdd }: { active: string; onSelect: (i
       })}
 
       <Item active={false} label="Criar ou entrar num servidor" onClick={onAdd}>
-        <span className="flex h-full w-full items-center justify-center rounded-[inherit] bg-chrome-2 text-online transition-colors hover:bg-online hover:text-sheet">
+        <span className="flex h-full w-full items-center justify-center rounded-[inherit] bg-rail-2 text-on-rail transition-colors hover:bg-signal hover:text-on-signal">
           <Plus size={22} />
         </span>
       </Item>

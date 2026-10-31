@@ -88,24 +88,24 @@ export function Attachments({ items }: { items: ApiAttachment[] }) {
               // tamanho conhecido: o espaço fica reservado e a conversa não "pula" quando a imagem chega
               width={a.width ?? undefined}
               height={a.height ?? undefined}
-              className="h-auto max-h-80 w-auto max-w-[min(100%,420px)] rounded-lg border border-ink/20 object-contain"
+              className="h-auto max-h-96 w-auto max-w-[min(100%,520px)] rounded-2xl border border-line object-contain"
               style={a.width && a.height ? { aspectRatio: `${a.width} / ${a.height}` } : undefined}
             />
           </a>
         ) : a.content_type?.startsWith("video/") ? (
-          <video key={a.id} src={a.url} controls className="max-h-80 max-w-[min(100%,480px)] rounded-lg border border-ink/20" />
+          <video key={a.id} src={a.url} controls className="max-h-96 max-w-[min(100%,520px)] rounded-2xl border border-line" />
         ) : (
           <a
             key={a.id}
             href={a.url}
             target="_blank"
             rel="noreferrer"
-            className="flex max-w-sm items-center gap-3 rounded-lg border border-ink bg-paper px-3 py-2.5 shadow-hard-sm hover:bg-sheet"
+            className="flex max-w-sm items-center gap-3 rounded-xl border border-line-strong bg-paper px-3 py-2.5 shadow-soft hover:bg-sheet"
           >
             <FileText size={28} className="shrink-0 text-signal" />
             <span className="min-w-0 flex-1 leading-tight">
               <span className="block truncate text-sm font-semibold">{a.filename}</span>
-              <span className="block font-mono text-[11px] text-muted">{formatBytes(a.size)}</span>
+              <span className="block text-[11px] tabular-nums text-muted">{formatBytes(a.size)}</span>
             </span>
             <Download size={16} className="text-muted" />
           </a>
