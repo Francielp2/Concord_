@@ -519,6 +519,12 @@ export function isUnread(s: State, channel: ApiChannel) {
   return cmpId(channel.last_message_id, rs.last_message_id) > 0;
 }
 
+// Início da chamada em ms. O menor valor cobre duas pessoas entrando na sala vazia ao mesmo tempo.
+export function callStartedAt(g: ApiGuild | undefined, channelId: string | null | undefined) {
+  const times = (g?.voice_states ?? []).filter((v) => v.channel_id === channelId && v.call_started_at).map((v) => Date.parse(v.call_started_at!));
+  return times.length ? Math.min(...times) : null;
+}
+
 export function mentionCount(s: State, channelId: string) {
   return s.readState[channelId]?.mention_count ?? 0;
 }

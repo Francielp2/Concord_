@@ -49,6 +49,7 @@ export type ApiVoiceState = {
   self_mute: boolean;
   self_deaf: boolean;
   mute?: boolean; // silenciado por um moderador
+  call_started_at?: string | null;
 };
 
 export type ApiEmoji = { id: string; name: string; animated: boolean; url: string };

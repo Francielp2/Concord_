@@ -169,6 +169,7 @@ export function serializeVoiceState(vs: VoiceState) {
     self_mute: vs.selfMute,
     self_deaf: vs.selfDeaf,
     mute: vs.serverMute,
+    call_started_at: iso(vs.callStartedAt),
   };
 }
 

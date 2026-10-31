@@ -306,6 +306,8 @@ model VoiceState {
   selfDeaf  Boolean  @default(false)
   // silenciado por um moderador; vale até sair do canal
   serverMute Boolean @default(false)
+  // quando a chamada deste canal começou: herdado de quem já está na sala
+  callStartedAt DateTime @default(now())
   // último heartbeat de voz desse dispositivo
   lastSeenAt DateTime @default(now())
   updatedAt DateTime @updatedAt

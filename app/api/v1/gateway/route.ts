@@ -91,10 +91,16 @@ export const POST = route(async (req) => {
       // o último dispositivo a entrar vence: a sessão dele substitui a anterior
       const session = sessionId ?? previous?.sessionId ?? randomBytes(16).toString("hex");
       const lastSeenAt = new Date();
+      // Fica na linha de cada um, e não no menor horário de entrada: assim o tempo não volta quando
+      // a primeira pessoa sai, e a sala que esvazia não deixa nada para a próxima chamada herdar.
+      const callStartedAt =
+        previous?.channelId === channelId
+          ? previous.callStartedAt
+          : ((await db.voiceState.findFirst({ where: { channelId }, orderBy: { callStartedAt: "asc" }, select: { callStartedAt: true } }))?.callStartedAt ?? lastSeenAt);
       const state = await db.voiceState.upsert({
         where: { userId: user.id },
-        create: { userId: user.id, guildId: ctx.channel.guildId, channelId, selfMute, selfDeaf, sessionId: session, lastSeenAt },
-        update: { guildId: ctx.channel.guildId, channelId, selfMute, selfDeaf, sessionId: session, lastSeenAt },
+        create: { userId: user.id, guildId: ctx.channel.guildId, channelId, selfMute, selfDeaf, sessionId: session, lastSeenAt, callStartedAt },
+        update: { guildId: ctx.channel.guildId, channelId, selfMute, selfDeaf, sessionId: session, lastSeenAt, callStartedAt },
       });
       const payload = serializeVoiceState(state);
       await dispatch("VOICE_STATE_UPDATE", payload, { guildId: state.guildId });

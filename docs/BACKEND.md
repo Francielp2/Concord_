@@ -116,6 +116,9 @@ Enquanto a conexão está aberta, o usuário fica online (o próprio SSE renova 
 Sem conexão por mais de 90s, ele fica offline.
 
 A voz tem controle próprio, por dispositivo, porque um celular pode cair da chamada com o PC online.
+Cada estado de voz traz `call_started_at`: o início da chamada daquele canal, herdado de quem já está
+na sala. Quando a sala esvazia, a próxima chamada começa do zero. O cliente calcula a duração com o relógio dele.
+
 Quem sai é retirado por um destes caminhos, do mais rápido ao mais lento:
 
 1. `sendBeacon` no `pagehide` (a página fechou).

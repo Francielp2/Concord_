@@ -21,10 +21,14 @@ import {
   X,
 } from "lucide-react";
 import { SCREEN_SHARE_MESSAGE, screenShareSupport } from "@/lib/client/media";
-import { useStore } from "@/lib/client/store";
+import { callStartedAt, useStore } from "@/lib/client/store";
 import { Perm, hasPerm, type ApiVoiceState } from "@/lib/client/types";
+import { formatCallDuration } from "@/lib/client/voice";
+import { CallTimer } from "./CallTimer";
 import { CallWindow, useIsDesktop } from "./CallWindow";
 import { useVoiceRoom } from "./useVoiceRoom";
+
+const ENDED_NOTICE_MS = 6000;
 
 export function VoicePanel({
   voice,
@@ -101,6 +105,27 @@ export function VoicePanel({
     setBoardOpen(false);
   }
 
+  // Ao sair, mostra por alguns segundos quanto durou. Passar a chamada para outro aparelho não conta.
+  const startedAt = callStartedAt(guild, voice?.channel_id);
+  const inCall = !!voice;
+  const movedAway = !!elsewhere;
+  const lastStart = useRef<number | null>(null);
+  const [ended, setEnded] = useState<string | null>(null);
+  useEffect(() => {
+    if (inCall) {
+      lastStart.current = startedAt;
+      return;
+    }
+    const start = lastStart.current;
+    lastStart.current = null;
+    if (start != null && !movedAway) setEnded(formatCallDuration(Date.now() - start));
+  }, [inCall, startedAt, movedAway]);
+  useEffect(() => {
+    if (!ended) return;
+    const timer = setTimeout(() => setEnded(null), ENDED_NOTICE_MS);
+    return () => clearTimeout(timer);
+  }, [ended]);
+
   // Esc na tela cheia nativa não chega como tecla: é aqui que o modo expandido descobre
   useEffect(() => {
     const onChange = () => {
@@ -150,11 +175,18 @@ export function VoicePanel({
         </button>
       </div>
     );
+    const endedNotice = ended && (
+      <p className="border-t border-ink/15 bg-paper-3/40 px-3 py-2 text-xs font-semibold" role="status" data-call-ended>
+        Chamada encerrada · duração <span className="tabular-nums">{ended}</span>
+      </p>
+    );
     return (
       <>
         <div ref={audioBox} className="hidden" />
         {elsewhere && slot && createPortal(notice, slot)}
         {elsewhere && mobileBar && createPortal(notice, mobileBar)}
+        {endedNotice && slot && createPortal(endedNotice, slot)}
+        {endedNotice && mobileBar && createPortal(endedNotice, mobileBar)}
       </>
     );
   }
@@ -229,8 +261,11 @@ export function VoicePanel({
               <span className="min-w-0 flex-1 leading-tight">
                 <span className={`block text-xs ${live ? "font-semibold text-online" : "text-muted"}`}>{statusText}</span>
                 {channel && (
-                  <span className="block truncate text-xs text-muted">
-                    {channel.name} / {guild?.name}
+                  <span className="flex items-center gap-1.5 text-xs text-muted">
+                    <span className="min-w-0 truncate">
+                      {channel.name} / {guild?.name}
+                    </span>
+                    <CallTimer startedAt={startedAt} />
                   </span>
                 )}
               </span>
@@ -275,7 +310,12 @@ export function VoicePanel({
                 {live ? <Wifi size={14} className="shrink-0 text-online" /> : <WifiOff size={14} className="shrink-0 text-muted" />}
                 <span className="min-w-0">
                   <span className={`block truncate text-xs ${live ? "font-semibold text-online" : "text-muted"}`}>{statusText}</span>
-                  {channel && <span className="block truncate text-xs text-muted">{channel.name} / {guild?.name}</span>}
+                  {channel && (
+                    <span className="flex items-center gap-1.5 text-xs text-muted">
+                      <span className="min-w-0 truncate">{channel.name} / {guild?.name}</span>
+                      <CallTimer startedAt={startedAt} />
+                    </span>
+                  )}
                 </span>
               </button>
               <button
@@ -308,6 +348,7 @@ export function VoicePanel({
           onExpand={expand}
           onCollapse={collapse}
           tiles={call.tiles}
+          startedAt={startedAt}
           guildId={guild.id}
           sounds={sounds}
           canPlaySounds={canPlaySounds}

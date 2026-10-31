@@ -19,10 +19,11 @@ import {
   Volume2,
   X,
 } from "lucide-react";
-import { displayName, dmName, isUnread, mentionCount, statusOf, useStore } from "@/lib/client/store";
+import { callStartedAt, displayName, dmName, isUnread, mentionCount, statusOf, useStore } from "@/lib/client/store";
 import { Perm, hasPerm, type ApiChannel, type ApiGuild } from "@/lib/client/types";
 import { personPrefs, useVoicePrefs } from "@/lib/client/voicePrefs";
 import { canOpenGuildSettings } from "./GuildSettings";
+import { CallTimer } from "./voice/CallTimer";
 import { PersonControls } from "./voice/PersonControls";
 import { UserAvatar } from "./ui";
 
@@ -185,6 +186,7 @@ export function GuildSidebar({
                           {unread && !active && <span className="absolute -left-2 h-2 w-1 rounded-r bg-ink" />}
                           <Icon size={18} className="shrink-0 opacity-70" />
                           <span className="truncate">{ch.name}</span>
+                          {voice && <CallTimer startedAt={callStartedAt(guild, ch.id)} className="ml-auto text-xs font-normal text-muted" />}
                           {!!mentions && !active && (
                             <span className="ml-auto rounded-full bg-signal px-1.5 font-mono text-[11px] font-bold text-on-signal">{mentions}</span>
                           )}

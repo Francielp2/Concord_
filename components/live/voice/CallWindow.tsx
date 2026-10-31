@@ -7,6 +7,7 @@ import { displayName, useStore } from "@/lib/client/store";
 import type { ApiSound } from "@/lib/client/types";
 import { setWindowPos, useVoicePrefs } from "@/lib/client/voicePrefs";
 import { PersonControls } from "./PersonControls";
+import { CallTimer } from "./CallTimer";
 import { Soundboard } from "./Soundboard";
 import { Tile } from "./Tile";
 import type { Tile as TileData } from "./useVoiceRoom";
@@ -25,6 +26,7 @@ export function useIsDesktop() {
 
 type CallProps = {
   tiles: TileData[];
+  startedAt: number | null;
   guildId: string;
   sounds: ApiSound[];
   canPlaySounds: boolean;
@@ -174,6 +176,7 @@ function FloatingWindow({ onClose, onExpand, ...call }: CallProps & { onClose: (
           >
             <GripHorizontal size={16} />
             <span className="text-xs font-semibold">{call.tiles.filter((t) => t.kind === "camera").length} na chamada</span>
+            <CallTimer startedAt={call.startedAt} className="text-xs font-semibold" />
           </div>
           <WindowButtons
             canPlaySounds={call.canPlaySounds}
@@ -211,7 +214,10 @@ function BottomSheet({ onClose, onExpand, ...call }: CallProps & { onClose: () =
         data-call-sheet
       >
         <div className="mb-1 flex items-center justify-between px-1">
-          <span className="text-xs font-semibold text-faint">{call.tiles.filter((t) => t.kind === "camera").length} na chamada</span>
+          <span className="flex items-center gap-2 text-xs font-semibold text-faint">
+            {call.tiles.filter((t) => t.kind === "camera").length} na chamada
+            <CallTimer startedAt={call.startedAt} />
+          </span>
           <WindowButtons
             canPlaySounds={call.canPlaySounds}
             boardOpen={call.boardOpen}
@@ -251,7 +257,10 @@ function Expanded({ onCollapse, ...call }: CallProps & { onCollapse: () => void 
   return (
     <div className="fixed inset-0 z-[70] flex flex-col gap-2 bg-chrome p-2 pt-[max(0.5rem,env(safe-area-inset-top))]" data-call-expanded>
       <div className="flex shrink-0 items-center justify-between px-1">
-        <span className="text-xs font-semibold text-faint">{tiles.filter((t) => t.kind === "camera").length} na chamada</span>
+        <span className="flex items-center gap-2 text-xs font-semibold text-faint">
+          {tiles.filter((t) => t.kind === "camera").length} na chamada
+          <CallTimer startedAt={call.startedAt} />
+        </span>
         <div className="flex items-center gap-0.5">
           {call.canPlaySounds && (
             <button
