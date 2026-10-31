@@ -53,6 +53,7 @@ function applyAudio(room: Room, deaf: boolean, prefs: VoicePrefs) {
 export function useVoiceRoom({
   audioBox,
   channelId,
+  dm,
   sessionId,
   myId,
   muted,
@@ -63,6 +64,7 @@ export function useVoiceRoom({
 }: {
   audioBox: RefObject<HTMLDivElement | null>; // onde ficam os elementos de áudio
   channelId: string | null;
+  dm: boolean; // chamada de DM: o token vem de outra rota e não existe VoiceState
   sessionId: string;
   myId: string | undefined;
   muted: boolean;
@@ -98,7 +100,9 @@ export function useVoiceRoom({
       setStatus("connecting");
       let creds: { url: string; token: string };
       try {
-        creds = await api("/voice/token", { body: { session_id: sessionId } });
+        creds = dm
+          ? await api("/voice/dm-token", { body: { channel_id: channelId, session_id: sessionId } })
+          : await api("/voice/token", { body: { session_id: sessionId } });
       } catch (err) {
         if (cancelled) return;
         const code = (err as { status?: number }).status;
@@ -230,12 +234,12 @@ export function useVoiceRoom({
       setNotice("");
       setStatus("idle");
     };
-  }, [audioBox, channelId, sessionId]);
+  }, [audioBox, channelId, dm, sessionId]);
 
   // Fechar a página sai do canal na hora. Só ocultar não: trocar de aba ou minimizar não pode
   // derrubar uma chamada que está funcionando. Oculta e com a mídia já caída, aí sim sai.
   // Se o navegador matar a aba sem avisar, quem resolve é o webhook do LiveKit e a varredura.
-  const inCall = !!channelId;
+  const inCall = !!channelId && !dm;
   useEffect(() => {
     if (!inCall) return;
     const onHidden = () => {

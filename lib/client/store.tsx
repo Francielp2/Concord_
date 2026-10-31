@@ -142,9 +142,7 @@ function onEvent(s: State, t: string, d: Record<string, unknown>): State {
       if (m.author.id === me) {
         next = { ...next, readState: { ...next.readState, [m.channel_id]: { id: m.channel_id, last_message_id: m.id, mention_count: 0 } } };
       } else {
-        const mentioned =
-          !m.guild_id || m.mention_everyone || m.mentions?.some((u) => u.id === me);
-        if (mentioned) {
+        if (isMentioned(s, m)) {
           const rs = next.readState[m.channel_id] ?? { id: m.channel_id, last_message_id: null, mention_count: 0 };
           next = { ...next, readState: { ...next.readState, [m.channel_id]: { ...rs, mention_count: rs.mention_count + 1 } } };
         }
@@ -407,7 +405,11 @@ type Ctx = {
   loadMessages: (channelId: string, older?: boolean) => Promise<void>;
   loadMembers: (guildId: string) => Promise<void>;
   gatewaySend: (op: number, d: Record<string, unknown>) => Promise<unknown>;
+  // para quem precisa reagir a um evento e não só desenhar o estado (toque, notificação)
+  onGateway: (fn: GatewayListener) => () => void;
 };
+
+export type GatewayListener = (type: string, data: Record<string, unknown>) => void;
 
 const StoreContext = createContext<Ctx | null>(null);
 
@@ -423,6 +425,7 @@ export function StoreProvider({ children, onUnauthorized }: { children: React.Re
   const [state, dispatch] = useReducer(reducer, initial);
   const loading = useRef(new Set<string>());
   const unauthorized = useRef(onUnauthorized);
+  const listeners = useRef(new Set<GatewayListener>());
 
   useEffect(() => {
     unauthorized.current = onUnauthorized;
@@ -448,7 +451,10 @@ export function StoreProvider({ children, onUnauthorized }: { children: React.Re
         const msg = JSON.parse(ev.data) as { op: number; t: string | null; d: unknown };
         if (msg.op === 0 && msg.t === "READY") dispatch({ type: "READY", d: msg.d as Ready });
         else if (msg.op === 0 && msg.t === "RESUMED") dispatch({ type: "CONN", conn: "ready" });
-        else if (msg.op === 0 && msg.t) dispatch({ type: "EVENT", t: msg.t, d: msg.d as Record<string, unknown> });
+        else if (msg.op === 0 && msg.t) {
+          dispatch({ type: "EVENT", t: msg.t, d: msg.d as Record<string, unknown> });
+          for (const fn of listeners.current) fn(msg.t, msg.d as Record<string, unknown>);
+        }
         else if (msg.op === 9) {
           // não dá pra retomar: conexão nova, sem Last-Event-ID
           es?.close();
@@ -500,14 +506,22 @@ export function StoreProvider({ children, onUnauthorized }: { children: React.Re
 
   const gatewaySend = useCallback((op: number, d: Record<string, unknown>) => api("/gateway", { body: { op, d } }), []);
 
+  const onGateway = useCallback((fn: GatewayListener) => {
+    const set = listeners.current;
+    set.add(fn);
+    return () => {
+      set.delete(fn);
+    };
+  }, []);
+
   const stateRef = useRef(state);
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
 
   const value = useMemo(
-    () => ({ state, dispatch, loadMessages, loadMembers, gatewaySend }),
-    [state, loadMessages, loadMembers, gatewaySend],
+    () => ({ state, dispatch, loadMessages, loadMembers, gatewaySend, onGateway }),
+    [state, loadMessages, loadMembers, gatewaySend, onGateway],
   );
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }
@@ -534,6 +548,13 @@ export function isUnread(s: State, channel: ApiChannel) {
 export function callStartedAt(g: ApiGuild | undefined, channelId: string | null | undefined) {
   const times = (g?.voice_states ?? []).filter((v) => v.channel_id === channelId && v.call_started_at).map((v) => Date.parse(v.call_started_at!));
   return times.length ? Math.min(...times) : null;
+}
+
+// DM conta sempre; em servidor, menção direta, @everyone ou um cargo da pessoa
+export function isMentioned(s: State, m: ApiMessage) {
+  if (!m.guild_id || m.mention_everyone || m.mentions?.some((u) => u.id === s.me?.id)) return true;
+  const roles = s.guilds[m.guild_id]?.members.find((x) => x.user?.id === s.me?.id)?.roles ?? [];
+  return !!m.mention_roles?.some((r) => roles.includes(r));
 }
 
 export function mentionCount(s: State, channelId: string) {

@@ -220,6 +220,8 @@ Emoji do servidor no texto: `<:nome:id>`; na reação: `nome:id` (precisa existi
 | PATCH/DELETE | `/webhooks/{id}` | MANAGE_WEBHOOKS |
 | GET/POST/DELETE | `/webhooks/{id}/{token}` | sem login. POST `{ content, username?, avatar_url? }` posta no canal (`?wait=true` devolve a mensagem). Não menciona ninguém |
 | POST | `/voice/token` `{ session_id? }` | depois de entrar no canal de voz (op 4): `{ url, token }` da sala LiveKit. 503 sem LiveKit configurado, 409 se a chamada já passou para outro dispositivo |
+| POST | `/voice/dm-token` | `{ channel_id, session_id }`: token da sala `dm-<channelId>` para quem participa da DM (tipo 1 ou 3) e não tem bloqueio. Microfone e tela; sem VoiceState. O último dispositivo a entrar vence |
+| POST | `/voice/dm-call` | `{ action: ring\|accept\|decline\|end, channel_id, call_id? }`: sinal de chamada. Vira `CALL_RING`, `CALL_ACCEPT`, `CALL_DECLINE` ou `CALL_END` para os participantes da DM, com `at` (ms no relógio do servidor). Nada fica gravado: o toque expira em 30s em cada cliente |
 | POST | `/guilds/{id}/assets` | MANAGE_GUILD. Multipart (`kind` = `icon` ou `banner`, `image`), até 1 MB e 4 MB. Devolve `{ url }`, que passa a valer no PATCH da guild |
 | GET | `/guild-assets/{id}` | ícone ou banner (público) |
 | PATCH | `/guilds/{id}/voice-states/{user.id}` `{ mute }` | MUTE_MEMBERS. Silencia para todos: tira a permissão de publicar o microfone no próprio LiveKit, até a pessoa sair do canal |

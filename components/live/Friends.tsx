@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Ban, Check, Menu, MessageCircle, Search, UserMinus, UserPlus, X } from "lucide-react";
+import { Ban, Check, Menu, MessageCircle, Phone, Search, UserMinus, UserPlus, X } from "lucide-react";
 import { liveActivity } from "@/lib/client/activity";
 import { api } from "@/lib/client/api";
 import { displayName, statusOf, useStore } from "@/lib/client/store";
@@ -27,12 +27,14 @@ export function Friends({
   onTab,
   onDm,
   onJoin,
+  onCall,
   onMenu,
 }: {
   tab: FriendsTab;
   onTab: (tab: FriendsTab) => void;
   onDm: (userId: string) => void;
   onJoin: (channelId: string) => void;
+  onCall: (userId: string) => void;
   onMenu: () => void;
 }) {
   const { state } = useStore();
@@ -135,7 +137,7 @@ export function Friends({
                 {msg && !msg.ok && <p className="mb-2 text-sm text-dnd">{msg.text}</p>}
 
                 {shown.map((r) => (
-                  <FriendRow key={r.id} r={r} onDm={() => onDm(r.id)} act={act} />
+                  <FriendRow key={r.id} r={r} onDm={() => onDm(r.id)} onCall={() => onCall(r.id)} act={act} />
                 ))}
 
                 {!shown.length && (
@@ -166,10 +168,12 @@ export function Friends({
 function FriendRow({
   r,
   onDm,
+  onCall,
   act,
 }: {
   r: ApiRelationship;
   onDm: () => void;
+  onCall: () => void;
   act: (path: string, method: "PUT" | "DELETE", body?: Record<string, unknown>) => Promise<void>;
 }) {
   const { state } = useStore();
@@ -201,6 +205,9 @@ function FriendRow({
       <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
         {r.type === Rel.FRIEND && (
           <>
+            <Round label={`Ligar para ${displayName(u)}`} tone="online" onClick={onCall}>
+              <Phone size={18} />
+            </Round>
             <Round label="Mandar mensagem" onClick={onDm}>
               <MessageCircle size={18} />
             </Round>

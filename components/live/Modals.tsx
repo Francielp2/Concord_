@@ -7,6 +7,7 @@ import { AVATAR_TYPES, prepareAvatar, type PreparedAvatar } from "@/lib/client/a
 import { displayName, useStore } from "@/lib/client/store";
 import { Rel, type ApiChannel, type ApiGuild, type ApiInvite, type ApiUser } from "@/lib/client/types";
 import { GuildSettingsTabs } from "./GuildSettings";
+import { NotificationSettings } from "./Notifications";
 import { ThemePicker } from "./ThemePicker";
 import { Field, GhostButton, Modal, PrimaryButton, UserAvatar } from "./ui";
 
@@ -432,6 +433,7 @@ function ProfileBody({ onClose }: { onClose: () => void }) {
           <p className="mb-2 mt-0.5 text-xs text-muted">Vale só neste navegador.</p>
           <ThemePicker />
         </section>
+        <NotificationSettings />
         <details className="rounded-xl border border-line px-3 py-2">
           <summary className="cursor-pointer text-sm font-semibold">Trocar senha</summary>
           <div className="mt-3 space-y-3">

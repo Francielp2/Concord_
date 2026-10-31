@@ -3,6 +3,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  ArrowLeft,
+  Phone,
   AtSign,
   CirclePlus,
   CornerUpLeft,
@@ -21,12 +23,16 @@ import {
   X,
 } from "lucide-react";
 import { api, encodeEmoji } from "@/lib/client/api";
+import { useDocumentVisible } from "@/lib/client/notifications";
 import { displayName, dmName, statusOf, useStore } from "@/lib/client/store";
 import { Perm, hasPerm, type ApiChannel, type ApiGuild, type ApiMessage } from "@/lib/client/types";
 import { Attachments, useUploader, type Upload } from "./Attachments";
 import { EmojiGlyph } from "./Emoji";
 import { RichText } from "./RichText";
 import { Field, GhostButton, Modal, PrimaryButton, UserAvatar, formatDay, formatTime } from "./ui";
+
+// o que, aberto, fica com o Esc para si
+const OVER_THE_CHAT = '[role="dialog"],[role="alertdialog"],[data-command-palette],[data-call-expanded],[data-call-sheet],[aria-expanded="true"],[aria-label="Fechar menu"]';
 
 const QUICK = ["👍", "❤️", "😂", "🔥", "👀", "🎉"];
 const GROUP_MS = 7 * 60 * 1000;
@@ -39,6 +45,8 @@ export function Chat({
   onMenu,
   onInvite,
   onOpenChannel,
+  onBack,
+  onCall,
 }: {
   channel: ApiChannel;
   guild?: ApiGuild;
@@ -47,6 +55,8 @@ export function Chat({
   onMenu: () => void;
   onInvite?: () => void;
   onOpenChannel?: (id: string) => void;
+  onBack?: () => void;
+  onCall?: () => void;
 }) {
   const { state, dispatch, loadMessages } = useStore();
   const list = state.messages[channel.id];
@@ -92,13 +102,32 @@ export function Chat({
   // marca como lido a última mensagem enquanto o canal está aberto
   const last = [...items].reverse().find((m) => !m.pending && !m.failed);
   const readId = state.readState[channel.id]?.last_message_id;
+  // com a aba oculta não marca como lido; ao voltar, marca
+  const visible = useDocumentVisible();
   useEffect(() => {
-    if (!last || last.id === readId || document.visibilityState !== "visible") return;
+    if (!last || last.id === readId || !visible) return;
     const t = setTimeout(() => {
       api(`/channels/${channel.id}/messages/${last.id}/ack`, { method: "POST" }).catch(() => {});
     }, 400);
     return () => clearTimeout(t);
-  }, [last, readId, channel.id]);
+  }, [last, readId, channel.id, visible]);
+
+  // Esc volta para Amigos, se nada estiver aberto por cima. Roda antes de quem está por cima
+  // fechar, senão o mesmo Esc fecharia o menu e ainda sairia da conversa.
+  const backKey = useRef({ onBack, busy: false });
+  useEffect(() => {
+    backKey.current = { onBack, busy: !!draft.trim() || !!replyTo || !!editing || !!picker || !!threadFor };
+  });
+  useEffect(() => {
+    if (!isDm) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || backKey.current.busy) return;
+      if (document.querySelector(OVER_THE_CHAT)) return;
+      backKey.current.onBack?.();
+    };
+    window.addEventListener("keydown", onKey, { capture: true });
+    return () => window.removeEventListener("keydown", onKey, { capture: true });
+  }, [isDm]);
 
   function onScroll() {
     const el = scrollRef.current!;
@@ -212,6 +241,11 @@ export function Chat({
         <button className={`${iconBtn} md:hidden`} aria-label="Abrir menu" onClick={onMenu}>
           <Menu size={20} />
         </button>
+        {isDm && onBack && (
+          <button className={iconBtn} aria-label="Voltar para Amigos" title="Voltar para Amigos (Esc)" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </button>
+        )}
         {other ? (
           <UserAvatar user={state.users[other.id] ?? other} size={24} status={statusOf(state, other.id)} ring="border-sheet" />
         ) : isDm ? (
@@ -230,6 +264,11 @@ export function Chat({
           )}
         </div>
         <div className="flex shrink-0 items-center gap-0.5">
+          {other && onCall && (
+            <button className={iconBtn} aria-label={`Ligar para ${displayName(state.users[other.id] ?? other)}`} title="Ligar" onClick={onCall}>
+              <Phone size={19} />
+            </button>
+          )}
           {guild && onInvite && (
             <button className={`${iconBtn} hidden sm:flex`} aria-label="Convidar" onClick={onInvite}>
               <UserPlus size={19} />

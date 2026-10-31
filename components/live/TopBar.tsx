@@ -49,7 +49,7 @@ export function TopBar({
       >
         <Search size={wide ? 20 : 15} className="shrink-0" aria-hidden />
         <span className="truncate opacity-70">Buscar no Concord...</span>
-        <kbd className="ml-auto hidden shrink-0 rounded-md bg-rail-2 px-2 py-0.5 font-sans text-[13px] font-medium sm:inline board:bg-voice-btn">Ctrl + K</kbd>
+        <kbd className="ml-auto hidden shrink-0 rounded-md bg-rail-3 px-2 py-0.5 font-sans text-[13px] font-medium sm:inline">Ctrl + K</kbd>
       </button>
       <button
         type="button"

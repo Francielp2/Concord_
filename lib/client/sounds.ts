@@ -35,6 +35,46 @@ export function playCue(kind: "join" | "leave") {
   });
 }
 
+function tone(ac: AudioContext, freq: number, start: number, length: number, level: number) {
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.type = "sine";
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(level, start + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + length);
+  osc.connect(gain).connect(ac.destination);
+  osc.start(start);
+  osc.stop(start + length + 0.02);
+}
+
+export function playMessageCue() {
+  const ac = audio();
+  tone(ac, 880, ac.currentTime, 0.14, 0.1);
+  tone(ac, 1174.66, ac.currentTime + 0.1, 0.18, 0.1);
+}
+
+const RING_EVERY_MS = 2500;
+
+// Toque de chamada em loop, com vibração no celular. Devolve a função que para os dois.
+export function startRingtone({ silent }: { silent: boolean }) {
+  if (silent) return () => {};
+  const ring = () => {
+    const ac = audio();
+    [0, 0.45].forEach((offset) => {
+      tone(ac, 659.25, ac.currentTime + offset, 0.2, 0.16);
+      tone(ac, 830.61, ac.currentTime + offset + 0.2, 0.2, 0.16);
+    });
+    navigator.vibrate?.([400, 200, 400]);
+  };
+  ring();
+  const timer = setInterval(ring, RING_EVERY_MS);
+  return () => {
+    clearInterval(timer);
+    navigator.vibrate?.(0);
+  };
+}
+
 function loadBuffer(url: string) {
   let pending = buffers.get(url);
   if (!pending) {

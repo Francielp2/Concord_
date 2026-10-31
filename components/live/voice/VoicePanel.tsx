@@ -11,6 +11,7 @@ import {
   Minimize2,
   MonitorUp,
   Music,
+  Phone,
   Smartphone,
   Video,
   VideoOff,
@@ -27,9 +28,11 @@ import { CallWindow, useIsDesktop } from "./CallWindow";
 import { LeaveButton } from "./LeaveButton";
 import { PipPanel } from "./PipPanel";
 import { useParticipantPip } from "./useParticipantPip";
+import type { DmCall } from "./useDmCall";
 import { useVoiceRoom } from "./useVoiceRoom";
 
 const ENDED_NOTICE_MS = 6000;
+const ALONE_MS = 30_000;
 
 export function VoicePanel({
   voice,
@@ -37,8 +40,13 @@ export function VoicePanel({
   kicked,
   muted,
   deaf,
+  dmCall,
+  dmTitle,
+  onDmEnd,
+  onDmReplaced,
   slot,
   mobileBar,
+  banner,
   focusSignal,
   sessionId,
   onLeave,
@@ -52,8 +60,13 @@ export function VoicePanel({
   kicked: boolean; // estava aqui e outro dispositivo assumiu
   muted: boolean;
   deaf: boolean;
+  dmCall: DmCall | null; // chamada particular: usa a sala da DM, sem VoiceState
+  dmTitle: string;
+  onDmEnd: (message?: string) => void;
+  onDmReplaced: () => void;
   slot: HTMLElement | null; // onde os botões aparecem (rodapé da barra lateral)
   mobileBar: HTMLElement | null; // barra de chamada do celular
+  banner: HTMLElement | null; // faixa "Voltar à chamada", no alto da área principal
   focusSignal: number; // muda quando a chamada deve vir para a frente
   sessionId: string;
   onLeave: () => void;
@@ -66,16 +79,18 @@ export function VoicePanel({
   const guild = voice ? state.guilds[voice.guild_id] : undefined;
   const sounds = guild?.sounds ?? [];
   const audioBox = useRef<HTMLDivElement>(null);
+  const inDm = !!dmCall;
   const call = useVoiceRoom({
     audioBox,
-    channelId: voice?.channel_id ?? null,
+    channelId: dmCall?.channelId ?? voice?.channel_id ?? null,
+    dm: inDm,
     sessionId,
     myId: state.me?.id,
     muted,
     deaf,
     serverMuted: !!voice?.mute,
     sounds,
-    onReplaced,
+    onReplaced: inDm ? onDmReplaced : onReplaced,
   });
   const theme = useTheme();
   const people = useMemo(
@@ -85,17 +100,13 @@ export function VoicePanel({
         .map((t) => ({ id: t.identity, name: t.local ? "Você" : displayName(state.users[t.identity]), speaking: t.speaking, micOn: t.micOn })),
     [call.tiles, state.users],
   );
-  const pip = useParticipantPip({ inCall: !!voice, people, theme, onLeave, onMute });
+  const leave = inDm ? () => onDmEnd() : onLeave;
+  const pip = useParticipantPip({ inCall: !!voice || inDm, people, theme, onLeave: leave, onMute });
   const desktop = useIsDesktop();
   const [open, setOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [boardOpen, setBoardOpen] = useState(false);
   const [screenSupport] = useState(screenShareSupport);
-  const [seenFocus, setSeenFocus] = useState(focusSignal);
-  if (seenFocus !== focusSignal) {
-    setSeenFocus(focusSignal);
-    setOpen(true);
-  }
 
   // Abre sozinha quando o primeiro vídeo aparece, mas dá pra fechar. No celular só abre
   // se pedir, porque o sheet cobriria o campo de mensagem.
@@ -107,16 +118,24 @@ export function VoicePanel({
   }
 
   // sair da chamada fecha a janela junto
-  const [seenChannel, setSeenChannel] = useState(voice?.channel_id ?? null);
-  if (seenChannel !== (voice?.channel_id ?? null)) {
-    setSeenChannel(voice?.channel_id ?? null);
+  const roomKey = dmCall?.channelId ?? voice?.channel_id ?? null;
+  const [seenChannel, setSeenChannel] = useState(roomKey);
+  if (seenChannel !== roomKey) {
+    setSeenChannel(roomKey);
     setOpen(false);
     setExpanded(false);
     setBoardOpen(false);
   }
 
+  // depois da troca de sala: atender uma chamada muda a sala e pede a janela ao mesmo tempo
+  const [seenFocus, setSeenFocus] = useState(focusSignal);
+  if (seenFocus !== focusSignal) {
+    setSeenFocus(focusSignal);
+    setOpen(true);
+  }
+
   // Ao sair, mostra por alguns segundos quanto durou. Passar a chamada para outro aparelho não conta.
-  const startedAt = callStartedAt(guild, voice?.channel_id);
+  const startedAt = dmCall ? dmCall.startedAt : callStartedAt(guild, voice?.channel_id);
   const inCall = !!voice;
   const movedAway = !!elsewhere;
   const lastStart = useRef<number | null>(null);
@@ -135,6 +154,19 @@ export function VoicePanel({
     const timer = setTimeout(() => setEnded(null), ENDED_NOTICE_MS);
     return () => clearTimeout(timer);
   }, [ended]);
+
+  // Sozinho na chamada da DM (o outro saiu, ou nem chegou a entrar): encerra depois de um tempo.
+  const remote = call.tiles.some((t) => !t.local);
+  const alone = dmCall?.phase === "active" && (!remote || call.status !== "connected");
+  const end = useRef(onDmEnd);
+  useEffect(() => {
+    end.current = onDmEnd;
+  });
+  useEffect(() => {
+    if (!alone) return;
+    const timer = setTimeout(() => end.current(), ALONE_MS);
+    return () => clearTimeout(timer);
+  }, [alone]);
 
   // Esc na tela cheia nativa não chega como tecla: é aqui que o modo expandido descobre
   useEffect(() => {
@@ -157,7 +189,7 @@ export function VoicePanel({
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   }
 
-  if (!voice) {
+  if (!voice && !dmCall) {
     const where = elsewhere && state.guilds[elsewhere.guild_id];
     const channel = where?.channels.find((c) => c.id === elsewhere?.channel_id);
     const notice = (
@@ -195,11 +227,15 @@ export function VoicePanel({
     );
   }
 
-  const channel = guild?.channels.find((c) => c.id === voice.channel_id);
+  const channel = guild?.channels.find((c) => c.id === voice?.channel_id);
+  const roomName = dmCall ? dmTitle : channel?.name;
+  const roomPlace = dmCall ? `Chamada com ${dmTitle}` : channel && `${channel.name} / ${guild?.name}`;
   const live = call.status === "connected";
   const canPlaySounds = hasPerm(guild?.permissions, Perm.USE_SOUNDBOARD);
   const statusText =
-    call.status === "connecting"
+    dmCall?.phase === "calling"
+      ? "Chamando..."
+      : call.status === "connecting"
       ? "Conectando o áudio…"
       : call.status === "unavailable"
         ? "Áudio não configurado no servidor"
@@ -207,11 +243,13 @@ export function VoicePanel({
           ? "Áudio caiu. Sai e entra de novo."
           : !live
             ? ""
-            : voice.mute
+            : voice?.mute
               ? "Silenciado por um moderador"
               : call.micBlocked
                 ? "Sem acesso ao microfone. Libera no navegador."
-                : `Áudio ligado • ${people.length} na sala`;
+                : dmCall && !remote
+                  ? "Só você na chamada"
+                  : `Áudio ligado • ${people.length} na sala`;
 
   const btn = (on: boolean) =>
     `flex h-8 flex-1 items-center justify-center rounded-lg border board:h-[37px] board:rounded-[10px] ${
@@ -259,7 +297,7 @@ export function VoicePanel({
         createPortal(
           <PipPanel
             people={people}
-            title={channel?.name ?? "Chamada"}
+            title={roomName ?? "Chamada"}
             status={statusText}
             startedAt={startedAt}
             muted={muted}
@@ -268,7 +306,7 @@ export function VoicePanel({
             theme={theme}
             onMute={onMute}
             onDeaf={onDeaf}
-            onLeave={onLeave}
+            onLeave={leave}
           />,
           pip.pipWindow.document.body,
         )}
@@ -288,10 +326,10 @@ export function VoicePanel({
                     statusText
                   )}
                 </span>
-                {channel && (
+                {roomPlace && (
                   <span className="flex items-center gap-1.5 text-xs text-muted board:mt-0.5 board:text-sm">
                     <span className="min-w-0 truncate">
-                      {channel.name} / {guild?.name}
+                      {roomPlace}
                     </span>
                     <CallTimer startedAt={startedAt} />
                   </span>
@@ -299,9 +337,11 @@ export function VoicePanel({
               </span>
             </div>
             <div className="flex items-center gap-1.5 board:items-end">
-              <button className={btn(call.camera)} disabled={!live} onClick={toggleCamera} aria-label={call.camera ? "Desligar câmera" : "Ligar câmera"}>
-                {call.camera ? <VideoOff size={16} /> : <Video size={16} />}
-              </button>
+              {!dmCall && (
+                <button className={btn(call.camera)} disabled={!live} onClick={toggleCamera} aria-label={call.camera ? "Desligar câmera" : "Ligar câmera"}>
+                  {call.camera ? <VideoOff size={16} /> : <Video size={16} />}
+                </button>
+              )}
               {screenSupport === "ok" && (
                 <button className={btn(call.screen)} disabled={!live} onClick={toggleScreen} aria-label={call.screen ? "Parar de compartilhar" : "Compartilhar tela"} title={call.screen ? undefined : SCREEN_AUDIO_HINT[screenAudioSupport()]}>
                   <MonitorUp size={16} />
@@ -315,7 +355,7 @@ export function VoicePanel({
               <button className={btn(open)} disabled={!live} onClick={() => setOpen((v) => !v)} aria-label={open ? "Esconder chamada" : "Ver chamada"}>
                 {open ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               </button>
-              <LeaveButton onLeave={onLeave} label="compact" className="md:h-8 board:ml-3 board:h-[42px] board:w-12 board:px-0" />
+              <LeaveButton onLeave={leave} label="compact" className="md:h-8 board:ml-3 board:h-[42px] board:w-12 board:px-0" />
             </div>
             {screenSupport !== "ok" && <p className="mt-1.5 px-1 text-[11px] leading-snug text-muted">{SCREEN_SHARE_MESSAGE[screenSupport]}</p>}
           </div>,
@@ -331,9 +371,9 @@ export function VoicePanel({
                 <span className={`h-2 w-2 shrink-0 rounded-full ${live ? "bg-online" : "bg-faint"}`} aria-hidden />
                 <span className="min-w-0">
                   <span className={`block truncate text-xs ${live ? "font-semibold text-online" : "text-muted"}`}>{statusText}</span>
-                  {channel && (
+                  {roomPlace && (
                     <span className="flex items-center gap-1.5 text-xs text-muted">
-                      <span className="min-w-0 truncate">{channel.name} / {guild?.name}</span>
+                      <span className="min-w-0 truncate">{roomPlace}</span>
                       <CallTimer startedAt={startedAt} />
                     </span>
                   )}
@@ -354,13 +394,33 @@ export function VoicePanel({
                 {deaf ? <HeadphoneOff size={18} className="text-dnd" /> : <Headphones size={18} />}
               </button>
               <span className="mx-1 h-7 w-px shrink-0 bg-line" aria-hidden />
-              <LeaveButton onLeave={onLeave} label="roomy" />
+              <LeaveButton onLeave={leave} label="roomy" />
             </div>
           </div>,
           mobileBar,
         )}
 
-      {live && guild && (
+      {banner &&
+        !(open && live) &&
+        !expanded &&
+        createPortal(
+          <div className="flex h-8 shrink-0 items-center gap-2 bg-online px-3 text-xs font-semibold text-sheet" data-call-banner>
+            <Phone size={14} className="shrink-0" aria-hidden />
+            <span className="min-w-0 truncate">{dmCall?.phase === "calling" ? `Chamando ${dmTitle}...` : `Em chamada · ${roomName ?? "sala"}`}</span>
+            <CallTimer startedAt={startedAt} />
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              disabled={!live}
+              className="ml-auto shrink-0 rounded-md border border-current px-2 py-0.5 hover:bg-sheet/20 disabled:opacity-60"
+            >
+              Voltar à chamada
+            </button>
+          </div>,
+          banner,
+        )}
+
+      {live && (guild || dmCall) && (
         <CallWindow
           open={open}
           expanded={expanded}
@@ -369,24 +429,26 @@ export function VoicePanel({
           onCollapse={collapse}
           tiles={call.tiles}
           startedAt={startedAt}
-          guildId={guild.id}
+          guildId={guild?.id ?? ""}
           sounds={sounds}
           canPlaySounds={canPlaySounds}
           boardOpen={boardOpen}
           cooling={call.cooling}
           onToggleBoard={() => setBoardOpen((v) => !v)}
           onPlay={call.sendSound}
-          onLeave={onLeave}
+          onLeave={leave}
           pip={{ mode: pip.mode, active: pip.active, error: pip.error, onToggle: pip.toggle }}
           sheetFooter={
             <>
-              <button
-                onClick={toggleCamera}
-                className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-chrome-2 py-2.5 text-sm font-semibold text-on-chrome"
-              >
-                {call.camera ? <VideoOff size={16} /> : <Video size={16} />}
-                {call.camera ? "Desligar câmera" : "Ligar câmera"}
-              </button>
+              {!dmCall && (
+                <button
+                  onClick={toggleCamera}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-chrome-2 py-2.5 text-sm font-semibold text-on-chrome"
+                >
+                  {call.camera ? <VideoOff size={16} /> : <Video size={16} />}
+                  {call.camera ? "Desligar câmera" : "Ligar câmera"}
+                </button>
+              )}
               {screenSupport !== "ok" && <p className="mt-2 px-1 text-xs leading-snug text-on-chrome-muted">{SCREEN_SHARE_MESSAGE[screenSupport]}</p>}
             </>
           }

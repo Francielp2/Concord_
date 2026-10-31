@@ -6,6 +6,7 @@ import { Loader2, X } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
 import { api } from "@/lib/client/api";
 import { registerServiceWorker } from "@/lib/client/install";
+import { setNotificationFallback, type NotificationClick } from "@/lib/client/notifications";
 import { StoreProvider, useStore } from "@/lib/client/store";
 import { unlockAudio } from "@/lib/client/sounds";
 import { accentVars, useTheme } from "@/lib/client/theme";
@@ -16,6 +17,7 @@ import { Chat } from "./Chat";
 import { CommandPalette, type PaletteTarget } from "./CommandPalette";
 import { Friends, type FriendsTab } from "./Friends";
 import { Members } from "./Members";
+import { NotificationInvite, useMessageAlerts } from "./Notifications";
 import {
   AddGuildModal,
   ConfirmModal,
@@ -31,6 +33,8 @@ import { GuildSidebar, HomeSidebar } from "./Sidebars";
 import { HelpModal, TopBar } from "./TopBar";
 import { UserBar } from "./UserBar";
 import { ActivityModal } from "./UserMenu";
+import { CallNotice, IncomingCallCard } from "./voice/CallAlerts";
+import { useDmCall } from "./voice/useDmCall";
 import { VoicePanel } from "./voice/VoicePanel";
 
 const NAV_KEY = "concord:nav";
@@ -66,7 +70,13 @@ function Shell() {
   const [nav, setNav] = useState<Nav>(() => {
     if (typeof window === "undefined") return { place: "home", channelByGuild: {}, dm: null };
     const saved = loadNav();
-    const fromInvite = new URLSearchParams(window.location.search).get("guild");
+    const query = new URLSearchParams(window.location.search);
+    const fromInvite = query.get("guild");
+    // vindo de uma notificação clicada com o site fechado
+    const toChannel = query.get("channel");
+    const toDm = query.get("dm");
+    if (toDm) return { ...saved, place: "home", dm: toDm };
+    if (fromInvite && toChannel) return { ...saved, place: fromInvite, channelByGuild: { ...saved.channelByGuild, [fromInvite]: toChannel } };
     return fromInvite ? { ...saved, place: fromInvite } : saved;
   });
   const [drawer, setDrawer] = useState(false);
@@ -86,6 +96,7 @@ function Shell() {
   const [createChannel, setCreateChannel] = useState<{ guild: ApiGuild; parentId: string | null; type: 0 | 2 | 4 } | null>(null);
   const [voiceSlot, setVoiceSlot] = useState<HTMLDivElement | null>(null);
   const [voiceBar, setVoiceBar] = useState<HTMLDivElement | null>(null);
+  const [callBanner, setCallBanner] = useState<HTMLDivElement | null>(null);
   const [voiceFocus, setVoiceFocus] = useState(0);
   const [voiceKicked, setVoiceKicked] = useState(false);
   const [sessionId] = useState(voiceSessionId);
@@ -105,7 +116,8 @@ function Shell() {
   const [deaf, setDeaf] = useState(false);
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).has("guild")) window.history.replaceState(null, "", "/app");
+    const query = new URLSearchParams(window.location.search);
+    if (query.has("guild") || query.has("dm")) window.history.replaceState(null, "", "/app");
     registerServiceWorker();
   }, []);
 
@@ -135,6 +147,8 @@ function Shell() {
       setNav((n) => ({ ...n, place: "home" }));
     }
   }, [state.conn, state.guilds, nav.place]);
+
+  useMessageAlerts(channel?.id);
 
   const myVoice = useMemo(() => {
     for (const g of Object.values(state.guilds)) {
@@ -167,6 +181,39 @@ function Shell() {
     return () => clearInterval(timer);
   }, [inOwnVoice, sessionId, gatewaySend]);
 
+  const dmCalls = useDmCall({
+    onBegin: () => {
+      if (ownVoice) leaveVoice();
+    },
+    onFocus: () => setVoiceFocus((n) => n + 1),
+  });
+
+  // clique em notificação do sistema: pelo service worker, ou direto onde ele não existe
+  const onNotification = useRef<(click: NotificationClick) => void>(() => {});
+  useEffect(() => {
+    onNotification.current = ({ action, data }) => {
+      if (data.kind === "call") {
+        if (action === "decline") dmCalls.decline(data.callId);
+        else if (action === "accept") dmCalls.accept(data.callId);
+        return;
+      }
+      if (data.guildId && data.channelId) {
+        const { guildId, channelId } = data;
+        setNav((n) => ({ ...n, place: guildId, channelByGuild: { ...n.channelByGuild, [guildId]: channelId } }));
+      } else if (data.channelId) {
+        setNav((n) => ({ ...n, place: "home", dm: data.channelId! }));
+      }
+    };
+  });
+  useEffect(() => {
+    const handle = (e: MessageEvent) => {
+      if (e.data?.type === "concord:notification") onNotification.current({ action: e.data.action, data: e.data.data ?? {} });
+    };
+    setNotificationFallback((click) => onNotification.current(click));
+    navigator.serviceWorker?.addEventListener("message", handle);
+    return () => navigator.serviceWorker?.removeEventListener("message", handle);
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k") {
@@ -190,12 +237,21 @@ function Shell() {
     else setMembersDrawer((v) => !v);
   }
 
-  async function openDmWith(userId: string) {
+  async function dmChannelWith(userId: string) {
     const existing = Object.values(state.dms).find((c) => c.type === 1 && c.recipients?.[0]?.id === userId);
-    if (existing) return go({ place: "home", dm: existing.id });
+    if (existing) return existing.id;
     const c = await api<ApiChannel>("/users/@me/channels", { body: { recipient_id: userId } });
     dispatch({ type: "UPSERT_DM", channel: c });
-    go({ place: "home", dm: c.id });
+    return c.id;
+  }
+
+  async function openDmWith(userId: string) {
+    go({ place: "home", dm: await dmChannelWith(userId) });
+  }
+
+  // ligar não muda de tela: quem liga da lista de amigos continua nela
+  async function callUser(userId: string) {
+    await dmCalls.start(await dmChannelWith(userId)).catch(() => {});
   }
 
   function pickFromPalette(target: PaletteTarget) {
@@ -230,6 +286,8 @@ function Shell() {
   function openVoice(channelId: string) {
     setDrawer(false);
     unlockAudio();
+    // uma chamada por vez: entrar em canal de voz encerra a particular
+    if (dmCalls.call) dmCalls.hangup();
     if (channelId === ownVoice?.channel_id) setVoiceFocus((n) => n + 1);
     else setVoice(channelId);
   }
@@ -325,6 +383,7 @@ function Shell() {
             <div className="bg-mustard px-3 py-1 text-center text-xs font-semibold text-chrome">Conexão caiu. Reconectando…</div>
           )}
           {state.me.verified === false && <VerifyBanner email={state.me.email} className={channel ? "top-1" : "bottom-2"} />}
+          <div ref={setCallBanner} />
           <div ref={setVoiceBar} className="md:hidden" />
           <div className="flex min-h-0 flex-1">
             {channel ? (
@@ -337,11 +396,13 @@ function Shell() {
                 onMenu={() => setDrawer(true)}
                 onInvite={guild ? () => setInvite(guild) : undefined}
                 onOpenChannel={(id) => guild && go({ channelByGuild: { ...nav.channelByGuild, [guild.id]: id } })}
+                onBack={guild ? undefined : () => go({ place: "home", dm: null })}
+                onCall={guild ? undefined : () => dmCalls.start(channel.id)}
               />
             ) : guild ? (
               <EmptyGuild guild={guild} onCreate={() => setCreateChannel({ guild, parentId: null, type: 0 })} />
             ) : (
-              <Friends tab={friendsTab} onTab={setFriendsTab} onDm={openDmWith} onJoin={openVoice} onMenu={() => setDrawer(true)} />
+              <Friends tab={friendsTab} onTab={setFriendsTab} onDm={openDmWith} onJoin={openVoice} onCall={callUser} onMenu={() => setDrawer(true)} />
             )}
             {guild && membersOpen && <Members guild={guild} onDm={openDmWith} className="hidden lg:block board:block" />}
           </div>
@@ -358,21 +419,33 @@ function Shell() {
 
       {/* fica fora das barras laterais pra chamada não cair ao trocar de tela */}
       <VoicePanel
-        voice={ownVoice}
+        voice={dmCalls.call ? null : ownVoice}
         elsewhere={elsewhere}
+        dmCall={dmCalls.call}
+        dmTitle={dmCalls.title}
+        onDmEnd={dmCalls.hangup}
+        onDmReplaced={dmCalls.replaced}
         kicked={voiceKicked}
         muted={muted}
         deaf={deaf}
         slot={voiceSlot}
         mobileBar={voiceBar}
+        banner={callBanner}
         focusSignal={voiceFocus}
         sessionId={sessionId}
         onLeave={leaveVoice}
-        onTakeOver={() => elsewhere?.channel_id && setVoice(elsewhere.channel_id)}
+        onTakeOver={() => {
+          if (dmCalls.call) dmCalls.hangup();
+          if (elsewhere?.channel_id) setVoice(elsewhere.channel_id);
+        }}
         onReplaced={() => setVoiceKicked(true)}
         onMute={toggleMute}
         onDeaf={toggleDeaf}
       />
+
+      {dmCalls.head && <IncomingCallCard call={dmCalls.head} queued={dmCalls.queued} onAccept={() => dmCalls.accept()} onDecline={() => dmCalls.decline()} />}
+      {dmCalls.notice && <CallNotice text={dmCalls.notice} onClose={dmCalls.clearNotice} />}
+      <NotificationInvite />
 
       <AddGuildModal open={addGuild} onClose={() => setAddGuild(false)} onDone={(id) => go({ place: id })} />
       <NewDmModal open={newDm} onClose={() => setNewDm(false)} onOpen={(id) => go({ place: "home", dm: id })} />

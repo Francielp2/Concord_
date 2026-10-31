@@ -24,6 +24,7 @@ function signJwt(claims: object, secret: string) {
 }
 
 export const voiceRoomName = (channelId: bigint) => `voice-${channelId}`;
+export const dmRoomName = (channelId: bigint) => `dm-${channelId}`;
 
 // O id da sessão do dispositivo vai no metadata do participante: a identity é o usuário,
 // igual em todos os dispositivos, e só com ela não dá pra saber qual deles saiu.
@@ -55,6 +56,11 @@ export function voiceGrants(perms: bigint, serverMute: boolean) {
 }
 
 export type VoiceGrants = ReturnType<typeof voiceGrants>;
+
+// Chamada de DM não tem cargos nem canal: microfone e tela para quem participa, sem soundboard.
+export function dmGrants(): VoiceGrants {
+  return { canSubscribe: true, canPublish: true, canPublishData: false, canPublishSources: ["MICROPHONE", "SCREEN_SHARE", "SCREEN_SHARE_AUDIO"] };
+}
 
 export function livekitToken(input: {
   key: string;

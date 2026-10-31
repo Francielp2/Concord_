@@ -48,6 +48,7 @@ export const Limits = {
   emojiCreate: [20, 3600],
   soundCreate: [20, 3600],
   threadCreate: [10, 600],
+  dmCall: [60, 60],
 } as const satisfies Record<string, readonly [number, number]>;
 
 export function limit(name: keyof typeof Limits, id: string | bigint) {
