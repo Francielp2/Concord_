@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MotionConfig } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { LogoMark } from "@/components/Logo";
 import { api } from "@/lib/client/api";
@@ -11,7 +12,8 @@ import { accentVars, useTheme } from "@/lib/client/theme";
 import type { ApiChannel, ApiGuild } from "@/lib/client/types";
 import { voiceSessionId } from "@/lib/client/voice";
 import { Chat } from "./Chat";
-import { Friends } from "./Friends";
+import { CommandPalette, type PaletteTarget } from "./CommandPalette";
+import { Friends, type FriendsTab } from "./Friends";
 import { Members } from "./Members";
 import {
   AddGuildModal,
@@ -25,7 +27,9 @@ import {
 } from "./Modals";
 import { Rail } from "./Rail";
 import { GuildSidebar, HomeSidebar } from "./Sidebars";
+import { HelpModal, TopBar } from "./TopBar";
 import { UserBar } from "./UserBar";
+import { ActivityModal } from "./UserMenu";
 import { VoicePanel } from "./voice/VoicePanel";
 
 const NAV_KEY = "concord:nav";
@@ -47,7 +51,9 @@ export function LiveApp() {
   }, []);
   return (
     <StoreProvider onUnauthorized={goLogin}>
-      <Shell />
+      <MotionConfig reducedMotion="user">
+        <Shell />
+      </MotionConfig>
     </StoreProvider>
   );
 }
@@ -69,6 +75,10 @@ function Shell() {
   const [addGuild, setAddGuild] = useState(false);
   const [newDm, setNewDm] = useState(false);
   const [profile, setProfile] = useState(false);
+  const [activityOpen, setActivityOpen] = useState(false);
+  const [help, setHelp] = useState(false);
+  const [palette, setPalette] = useState(false);
+  const [friendsTab, setFriendsTab] = useState<FriendsTab>("online");
   const [invite, setInvite] = useState<ApiGuild | null>(null);
   const [settings, setSettings] = useState<ApiGuild | null>(null);
   const [leave, setLeave] = useState<ApiGuild | null>(null);
@@ -155,6 +165,17 @@ function Shell() {
     return () => clearInterval(timer);
   }, [inOwnVoice, sessionId, gatewaySend]);
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPalette((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
   const go = (patch: Partial<Nav>) => {
     setNav((n) => ({ ...n, ...patch }));
     setDrawer(false);
@@ -173,6 +194,13 @@ function Shell() {
     const c = await api<ApiChannel>("/users/@me/channels", { body: { recipient_id: userId } });
     dispatch({ type: "UPSERT_DM", channel: c });
     go({ place: "home", dm: c.id });
+  }
+
+  function pickFromPalette(target: PaletteTarget) {
+    if (target.kind === "guild") go({ place: target.id });
+    else if (target.kind === "channel") go({ place: target.guildId, channelByGuild: { ...nav.channelByGuild, [target.guildId]: target.id } });
+    else if (target.kind === "dm") go({ place: "home", dm: target.id });
+    else openDmWith(target.id).catch(() => {});
   }
 
   async function setVoice(channelId: string, opts: { mute?: boolean; deaf?: boolean } = {}) {
@@ -232,7 +260,7 @@ function Shell() {
   const footer = (
     <>
       <div ref={setVoiceSlot} />
-      <UserBar muted={muted} deaf={deaf} onMute={toggleMute} onDeaf={toggleDeaf} onSettings={() => setProfile(true)} onInstallHelp={() => setInstallHelp(true)} />
+      <UserBar muted={muted} deaf={deaf} onMute={toggleMute} onDeaf={toggleDeaf} onSettings={() => setProfile(true)} onActivity={() => setActivityOpen(true)} onInstallHelp={() => setInstallHelp(true)} />
     </>
   );
 
@@ -266,7 +294,20 @@ function Shell() {
 
   return (
     <div style={accentVars(guild?.accent_color, theme)} className="app-backdrop h-dvh text-ink md:p-3 lg:p-4">
-      <div className="flex h-full overflow-hidden bg-rail md:rounded-3xl md:border md:border-line md:shadow-pop">
+      <div className="flex h-full flex-col overflow-hidden bg-rail md:rounded-3xl md:border md:border-line md:shadow-pop">
+        {/* no celular só na tela Amigos: dentro do chat a altura é do campo de mensagem */}
+        <TopBar
+          className={channel || guild ? "hidden md:flex" : "flex"}
+          onSearch={() => setPalette(true)}
+          onPending={() => {
+            setFriendsTab("pending");
+            go({ place: "home", dm: null });
+          }}
+          onHelp={() => setHelp(true)}
+          onActivity={() => setActivityOpen(true)}
+          onInstallHelp={() => setInstallHelp(true)}
+        />
+        <div className="flex min-h-0 flex-1">
         <div
           className={`fixed inset-y-0 left-0 z-40 flex transition-transform duration-300 md:static md:translate-x-0 ${
             drawer ? "translate-x-0" : "-translate-x-full"
@@ -298,11 +339,12 @@ function Shell() {
             ) : guild ? (
               <EmptyGuild guild={guild} onCreate={() => setCreateChannel({ guild, parentId: null, type: 0 })} />
             ) : (
-              <Friends onDm={openDmWith} onMenu={() => setDrawer(true)} />
+              <Friends tab={friendsTab} onTab={setFriendsTab} onDm={openDmWith} onJoin={openVoice} onMenu={() => setDrawer(true)} />
             )}
             {guild && membersOpen && <Members guild={guild} onDm={openDmWith} className="hidden lg:block" />}
           </div>
         </main>
+        </div>
       </div>
 
       {guild && membersDrawer && (
@@ -333,6 +375,9 @@ function Shell() {
       <AddGuildModal open={addGuild} onClose={() => setAddGuild(false)} onDone={(id) => go({ place: id })} />
       <NewDmModal open={newDm} onClose={() => setNewDm(false)} onOpen={(id) => go({ place: "home", dm: id })} />
       <ProfileModal open={profile} onClose={() => setProfile(false)} />
+      <ActivityModal open={activityOpen} onClose={() => setActivityOpen(false)} />
+      <HelpModal open={help} onClose={() => setHelp(false)} />
+      <CommandPalette open={palette} onClose={() => setPalette(false)} onPick={pickFromPalette} />
       <InstallHelpModal open={installHelp} onClose={() => setInstallHelp(false)} />
       <InviteModal guild={invite} channelId={guild && channel?.guild_id === guild.id ? channel.id : null} onClose={() => setInvite(null)} />
       <GuildSettingsModal guild={settings} onClose={() => setSettings(null)} />

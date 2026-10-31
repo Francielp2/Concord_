@@ -13,6 +13,7 @@ import {
   Plus,
   Search,
   Settings,
+  Sparkles,
   Trash2,
   UserPlus,
   Users,
@@ -26,6 +27,8 @@ import { canOpenGuildSettings } from "./GuildSettings";
 import { CallTimer } from "./voice/CallTimer";
 import { PersonControls } from "./voice/PersonControls";
 import { UserAvatar } from "./ui";
+
+const NEWS_KEY = "concord:news-screen-audio-dismissed";
 
 const shell = "flex w-60 shrink-0 flex-col border-r border-line bg-paper-2 lg:w-64";
 
@@ -300,6 +303,21 @@ export function HomeSidebar({
 }) {
   const { state } = useStore();
   const [q, setQ] = useState("");
+  const [newsSeen, setNewsSeen] = useState(() => {
+    try {
+      return localStorage.getItem(NEWS_KEY) === "1";
+    } catch {
+      return false;
+    }
+  });
+
+  function dismissNews() {
+    setNewsSeen(true);
+    try {
+      localStorage.setItem(NEWS_KEY, "1");
+    } catch {}
+  }
+
   const pending = Object.values(state.relationships).filter((r) => r.type === 3).length;
   const dms = Object.values(state.dms)
     .filter((c) => dmName(state, c).toLowerCase().includes(q.toLowerCase()))
@@ -371,6 +389,23 @@ export function HomeSidebar({
           {!dms.length && <li className="px-2 py-4 text-center text-xs text-faint">Nenhuma conversa ainda.</li>}
         </ul>
       </div>
+      {!newsSeen && (
+        <div className="relative mx-2 mb-2 shrink-0 rounded-xl border border-line bg-sheet p-3 pr-8 shadow-soft">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-signal-ink">
+            <Sparkles size={13} className="shrink-0" aria-hidden />
+            Novidade no Concord
+          </p>
+          <p className="mt-1 text-xs leading-snug text-ink-3">Compartilhamento de tela com melhor qualidade e áudio do sistema</p>
+          <button
+            type="button"
+            aria-label="Dispensar novidade"
+            onClick={dismissNews}
+            className="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-lg text-muted hover:bg-paper-3 hover:text-ink"
+          >
+            <X size={15} />
+          </button>
+        </div>
+      )}
       {footer}
     </aside>
   );

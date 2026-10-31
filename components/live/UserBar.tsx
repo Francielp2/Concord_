@@ -1,15 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Download, Headphones, HeadphoneOff, LogOut, Mic, MicOff, Settings } from "lucide-react";
-import { api } from "@/lib/client/api";
-import { promptInstall, useInstallMode } from "@/lib/client/install";
+import { useCallback, useRef, useState } from "react";
+import { AnimatePresence } from "framer-motion";
+import { Headphones, HeadphoneOff, Mic, MicOff, Settings } from "lucide-react";
+import { customStatusText } from "@/lib/client/activity";
 import { displayName, statusOf, useStore } from "@/lib/client/store";
-import type { Status } from "@/lib/client/types";
+import { UserMenu } from "./UserMenu";
 import { STATUS_PT, UserAvatar } from "./ui";
-
-const CHOICES: Status[] = ["online", "idle", "dnd", "invisible"];
 
 export function UserBar({
   muted,
@@ -17,6 +14,7 @@ export function UserBar({
   onMute,
   onDeaf,
   onSettings,
+  onActivity,
   onInstallHelp,
 }: {
   muted: boolean;
@@ -24,73 +22,28 @@ export function UserBar({
   onMute: () => void;
   onDeaf: () => void;
   onSettings: () => void;
+  onActivity: () => void;
   onInstallHelp: () => void;
 }) {
-  const { state, dispatch, gatewaySend } = useStore();
+  const { state } = useStore();
   const [menu, setMenu] = useState(false);
-  const install = useInstallMode();
+  const closeMenu = useCallback(() => setMenu(false), []);
+  const bar = useRef<HTMLDivElement>(null);
   const me = state.me;
   const btn = "flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 hover:bg-paper-3 hover:text-ink";
 
-  async function pick(status: Status) {
-    setMenu(false);
-    dispatch({ type: "MY_STATUS", status });
-    await gatewaySend(3, { status }).catch(() => {});
-  }
-
-  async function logout() {
-    await api("/auth/logout", { method: "POST" }).catch(() => {});
-    window.location.assign("/login");
-  }
-
   return (
-    <div className="relative flex min-h-[58px] shrink-0 items-center gap-1 border-t border-line bg-paper-3/60 px-2 pb-[env(safe-area-inset-bottom)]">
+    <div ref={bar} className="relative flex min-h-[58px] shrink-0 items-center gap-1 border-t border-line bg-paper-3/60 px-2 pb-[env(safe-area-inset-bottom)]">
       <AnimatePresence>
-        {menu && (
-          <motion.div
-            initial={{ opacity: 0, y: 6 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 6 }}
-            className="absolute bottom-[62px] left-2 z-50 w-56 rounded-xl border border-line-strong bg-sheet p-1.5 shadow-pop"
-          >
-            {CHOICES.map((s) => (
-              <button
-                key={s}
-                onClick={() => pick(s)}
-                className={`flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-paper-2 ${
-                  state.myStatus === s ? "font-semibold" : ""
-                }`}
-              >
-                <span className={`h-2.5 w-2.5 rounded-full ${s === "online" ? "bg-online" : s === "idle" ? "bg-idle" : s === "dnd" ? "bg-dnd" : "bg-faint"}`} />
-                {STATUS_PT[s]}
-              </button>
-            ))}
-            <span className="my-1 block h-px bg-line" />
-            {install && (
-              <button
-                onClick={() => {
-                  setMenu(false);
-                  if (install === "prompt") promptInstall().catch(() => {});
-                  else onInstallHelp();
-                }}
-                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-paper-2"
-              >
-                <Download size={15} /> Instalar o app
-              </button>
-            )}
-            <button onClick={logout} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm text-dnd hover:bg-dnd/10">
-              <LogOut size={15} /> Sair da conta
-            </button>
-          </motion.div>
-        )}
+        {menu && <UserMenu anchor={bar} className="bottom-[62px] left-2" onClose={closeMenu} onActivity={onActivity} onInstallHelp={onInstallHelp} />}
       </AnimatePresence>
 
-      <button onClick={() => setMenu((v) => !v)} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left hover:bg-paper-3">
+      <button onClick={() => setMenu((v) => !v)} aria-expanded={menu} className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-left hover:bg-paper-3">
         <UserAvatar user={me ?? undefined} size={34} status={me ? statusOf(state, me.id) : undefined} ring="border-paper-3" />
         <span className="min-w-0 leading-tight">
           <span className="block truncate text-sm font-semibold">{displayName(me)}</span>
           <span className="block truncate text-xs text-muted">
-            {state.conn === "ready" ? STATUS_PT[state.myStatus] : "Reconectando…"}
+            {state.conn === "ready" ? (customStatusText(state.myCustomStatus) ?? STATUS_PT[state.myStatus]) : "Reconectando…"}
           </span>
         </span>
       </button>

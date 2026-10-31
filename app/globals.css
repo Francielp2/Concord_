@@ -52,6 +52,13 @@
   --color-avatar-5: #be185d;
   --color-avatar-6: #0369a1;
   --color-avatar-7: #4b5563;
+  /* cores de marca nos quadradinhos de atividade: iguais em todos os temas */
+  --color-brand-youtube: #e60000;
+  --color-brand-spotify: #1ed760;
+  --color-brand-twitch: #9146ff;
+  --color-brand-netflix: #e50914;
+  --color-on-brand: #ffffff;
+  --color-on-brand-light: #0b0b0b;
 
   --font-sans: var(--ff-body);
   --font-display: var(--ff-display);
@@ -67,6 +74,7 @@
 [data-theme="beige"] {
   --color-backdrop-a: #efe6d6;
   --color-backdrop-b: #f7f0e4;
+  --banner-moon: #fff6e0;
   --color-paper: #f7f0e4;
   --color-paper-2: #f5eddd;
   --color-paper-3: #eadfca;
@@ -107,6 +115,7 @@
 [data-theme="default"] {
   --color-backdrop-a: #e6e0d3;
   --color-backdrop-b: #f4efe4;
+  --banner-moon: #fff3dc;
   --color-paper: #f6f2e9;
   --color-paper-2: #f4efe4;
   --color-paper-3: #e7e0d0;
@@ -147,6 +156,7 @@
 [data-theme="black"] {
   --color-backdrop-a: #0b0d14;
   --color-backdrop-b: #141a2c;
+  --banner-moon: #e3e7ff;
   --color-paper: #1c2131;
   --color-paper-2: #10131c;
   --color-paper-3: #252b40;

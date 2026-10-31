@@ -47,6 +47,7 @@ export async function buildReady(userId: bigint, sessionId: string) {
   const guildIds = memberships.map((m) => m.guildId);
   const friendIds = relationships.filter((r) => r.type === 1).map((r) => r.targetId);
 
+  const own = await db.presence.findUnique({ where: { userId } });
   const presences = await db.presence.findMany({
     where: {
       online: true,
@@ -70,6 +71,8 @@ export async function buildReady(userId: bigint, sessionId: string) {
     relationships: relationships.map(serializeRelationship),
     read_state: readStates.map(serializeReadState),
     presences: (guildIds.length || friendIds.length ? presences : []).map((p) => serializePresence(p)),
+    // o que a própria pessoa escolheu, sem o efeito do invisível: só ela recebe isso
+    self_presence: { status: own?.status ?? "online", custom_status: own?.customStatus ?? null },
   };
 }
 

@@ -2,7 +2,7 @@ import type { User } from "@prisma/client";
 import { db } from "./db";
 import { dispatchToUsers } from "./events";
 import { Errors } from "./http";
-import { serializeRelationship } from "./serialize";
+import { serializePresence, serializeRelationship } from "./serialize";
 
 export const Rel = { FRIEND: 1, BLOCKED: 2, INCOMING: 3, OUTGOING: 4 } as const;
 
@@ -41,6 +41,11 @@ export async function sendFriendRequest(me: User, targetId: bigint) {
   if (mine?.type === Rel.INCOMING) {
     await notifyAdd(me.id, targetId, Rel.FRIEND);
     await notifyAdd(targetId, me.id, Rel.FRIEND);
+    // quem não divide servidor só recebia a presença do novo amigo depois de recarregar a página
+    const presences = await db.presence.findMany({ where: { userId: { in: [me.id, targetId] } } });
+    await Promise.all(
+      presences.map((p) => dispatchToUsers("PRESENCE_UPDATE", serializePresence(p), [p.userId === me.id ? targetId : me.id])),
+    );
     return;
   }
   await notifyAdd(me.id, targetId, Rel.OUTGOING);

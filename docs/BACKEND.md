@@ -95,7 +95,7 @@ Mensagens no formato do Discord: `{ op, d, s, t }`.
 |---|---|---|
 | 0 | DISPATCH | servidor → cliente (eventos, com `t` e `s`) |
 | 1 | HEARTBEAT | cliente → servidor (`POST /gateway`). Com `{ voice_session_id }` é o heartbeat de voz, a cada 10s |
-| 3 | PRESENCE_UPDATE | cliente → servidor `{ status: online\|idle\|dnd\|invisible, custom_status? }` |
+| 3 | PRESENCE_UPDATE | cliente → servidor `{ status: online\|idle\|dnd\|invisible, custom_status? }`. `custom_status` (até 128 caracteres) pode trazer uma atividade no formato `act:game\|Valorant` (`game`, `watch`, `listen`, `compete`); clientes devem exibir só o texto. O READY traz `self_presence` com o status e o texto escolhidos pela própria pessoa |
 | 4 | VOICE_STATE_UPDATE | cliente → servidor `{ guild_id, channel_id \| null, self_mute, self_deaf, session_id? }`. `session_id` identifica o dispositivo: ao entrar, substitui o anterior (o último vence); ao sair, só vale se ainda for o dele |
 | 7 | RECONNECT | servidor → cliente: reconecte e retome |
 | 9 | INVALID_SESSION | servidor → cliente: não dá para retomar, conecte do zero |

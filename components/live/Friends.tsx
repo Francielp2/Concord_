@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Ban, Check, Loader2, Menu, MessageCircle, Search, UserMinus, Users, X } from "lucide-react";
+import { Ban, Check, Menu, MessageCircle, Search, UserMinus, Users, X } from "lucide-react";
+import { liveActivity } from "@/lib/client/activity";
 import { api } from "@/lib/client/api";
 import { displayName, statusOf, useStore } from "@/lib/client/store";
-import { Rel, type ApiRelationship, type ApiUser } from "@/lib/client/types";
+import { Rel, type ApiRelationship } from "@/lib/client/types";
+import { AddFriendTab } from "./AddFriendTab";
+import { FriendsBanner } from "./FriendsBanner";
+import { RollingNow } from "./RollingNow";
 import { STATUS_PT, UserAvatar } from "./ui";
 
 const TABS = [
@@ -15,11 +19,22 @@ const TABS = [
   { id: "blocked", label: "Bloqueados" },
 ] as const;
 
-type Tab = (typeof TABS)[number]["id"] | "add";
+export type FriendsTab = (typeof TABS)[number]["id"] | "add";
 
-export function Friends({ onDm, onMenu }: { onDm: (userId: string) => void; onMenu: () => void }) {
+export function Friends({
+  tab,
+  onTab,
+  onDm,
+  onJoin,
+  onMenu,
+}: {
+  tab: FriendsTab;
+  onTab: (tab: FriendsTab) => void;
+  onDm: (userId: string) => void;
+  onJoin: (channelId: string) => void;
+  onMenu: () => void;
+}) {
   const { state } = useStore();
-  const [tab, setTab] = useState<Tab>("online");
   const [query, setQuery] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
@@ -44,9 +59,8 @@ export function Friends({ onDm, onMenu }: { onDm: (userId: string) => void; onMe
     tab === "online" ? "Online" : tab === "all" ? "Todos os amigos" : tab === "pending" ? "Pendentes" : "Bloqueados";
 
   return (
-    <section className="flex min-w-0 flex-1 bg-sheet">
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-line px-3">
+    <section className="flex min-w-0 flex-1 flex-col bg-sheet">
+      <header className="flex min-h-14 shrink-0 items-center gap-3 border-b border-line px-3">
           <button
             className="flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 hover:bg-paper-2 md:hidden"
             aria-label="Abrir menu"
@@ -65,7 +79,7 @@ export function Friends({ onDm, onMenu }: { onDm: (userId: string) => void; onMe
                 key={t.id}
                 role="tab"
                 aria-selected={tab === t.id}
-                onClick={() => setTab(t.id)}
+                onClick={() => onTab(t.id)}
                 className={`relative whitespace-nowrap rounded-lg px-2.5 py-1 text-[15px] font-medium ${
                   tab === t.id ? "text-ink" : "text-muted hover:bg-paper-2 hover:text-ink"
                 }`}
@@ -86,7 +100,7 @@ export function Friends({ onDm, onMenu }: { onDm: (userId: string) => void; onMe
               </button>
             ))}
             <button
-              onClick={() => setTab("add")}
+              onClick={() => onTab("add")}
               className={`whitespace-nowrap rounded-lg px-2.5 py-1 text-[15px] font-semibold ${
                 tab === "add" ? "text-online" : "bg-online text-sheet hover:bg-online/90"
               }`}
@@ -96,201 +110,58 @@ export function Friends({ onDm, onMenu }: { onDm: (userId: string) => void; onMe
           </nav>
         </header>
 
-        <div className="scroll-thin flex-1 overflow-y-auto px-6 pt-4">
-          {tab === "add" ? (
-            <AddFriend />
-          ) : (
-            <>
-              <label className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-1.5 focus-within:border-line-strong">
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Buscar"
-                  className="flex-1 bg-transparent text-[15px] outline-none placeholder:text-faint"
-                />
-                <Search size={16} className="text-muted" />
-              </label>
+      {/* abaixo de xl rola tudo junto e o painel vira uma seção no fim; em xl cada coluna rola sozinha */}
+      <div className="scroll-thin min-h-0 flex-1 overflow-y-auto xl:flex xl:overflow-hidden">
+        <div className="scroll-thin min-w-0 px-3 pt-3 sm:px-6 sm:pt-4 xl:flex-1 xl:overflow-y-auto">
+          <FriendsBanner />
+          <div className="mt-4">
+            {tab === "add" ? (
+              <AddFriendTab />
+            ) : (
+              <>
+                <label className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-1.5 focus-within:border-line-strong">
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Buscar"
+                    aria-label="Buscar nos amigos"
+                    className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-faint"
+                  />
+                  <Search size={16} className="text-muted" />
+                </label>
 
-              <h3 className="mb-2 mt-5 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">
-                {heading} · {shown.length}
-              </h3>
+                <h3 className="mb-2 mt-5 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">
+                  {heading} · {shown.length}
+                </h3>
 
-              {msg && !msg.ok && <p className="mb-2 text-sm text-dnd">{msg.text}</p>}
+                {msg && !msg.ok && <p className="mb-2 text-sm text-dnd">{msg.text}</p>}
 
-              {shown.map((r) => (
-                <FriendRow key={r.id} r={r} onDm={() => onDm(r.id)} act={act} />
-              ))}
+                {shown.map((r) => (
+                  <FriendRow key={r.id} r={r} onDm={() => onDm(r.id)} act={act} />
+                ))}
 
-              {!shown.length && (
-                <div className="flex flex-col items-center py-20 text-center">
-                  <span className="font-display text-3xl font-bold text-muted">
-                    {tab === "online" ? "Tudo quieto." : tab === "blocked" ? "Ninguém aqui." : tab === "pending" ? "Nada pendente." : "Bora fazer amigos?"}
-                  </span>
-                  <p className="mt-2 text-sm text-muted">
-                    {tab === "online" || tab === "all" ? "Manda um pedido na aba Adicionar amigo." : ""}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      <aside className="hidden w-[340px] shrink-0 border-l border-line bg-paper px-4 pt-5 xl:block">
-        <h3 className="font-display text-xl font-extrabold">Rolando agora</h3>
-        <div className="mt-4 space-y-3">
-          {friends
-            .filter((r) => statusOf(state, r.id) !== "offline")
-            .slice(0, 8)
-            .map((r) => {
-              const u = state.users[r.id] ?? r.user;
-              const p = state.presences[r.id];
-              return (
-                <button
-                  key={r.id}
-                  onClick={() => onDm(r.id)}
-                  className="flex w-full items-center gap-3 rounded-xl border border-line-strong bg-sheet p-3 text-left shadow-soft hover:-translate-y-0.5 transition-transform"
-                >
-                  <UserAvatar user={u} size={36} status={statusOf(state, r.id)} ring="border-sheet" />
-                  <span className="min-w-0 leading-tight">
-                    <span className="block truncate text-sm font-semibold">{displayName(u)}</span>
-                    <span className="block truncate text-xs text-muted">{p?.custom_status || STATUS_PT[statusOf(state, r.id)]}</span>
-                  </span>
-                </button>
-              );
-            })}
-        </div>
-        <p className="mt-6 text-center text-xs text-faint">Quem estiver online aparece aqui.</p>
-      </aside>
-    </section>
-  );
-}
-
-type Found = Pick<ApiUser, "id" | "username" | "global_name" | "avatar">;
-
-const MIN_QUERY = 2;
-const SEARCH_DEBOUNCE_MS = 250;
-
-// Busca enquanto digita, e o pedido só sai ao clicar na pessoa: Enter não envia nada.
-function AddFriend() {
-  const { state } = useStore();
-  const [text, setText] = useState("");
-  const [result, setResult] = useState<{ q: string; items: Found[]; error: string } | null>(null);
-  const [sent, setSent] = useState<string[]>([]);
-  const [sending, setSending] = useState<string | null>(null);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-
-  const q = text.trim().replace(/^@/, "");
-  const searching = q.length >= MIN_QUERY;
-  const loading = searching && result?.q !== q;
-
-  useEffect(() => {
-    if (!searching) return;
-    let stale = false;
-    const timer = setTimeout(async () => {
-      try {
-        const items = await api<Found[]>(`/users/search?q=${encodeURIComponent(q)}`);
-        if (!stale) setResult({ q, items, error: "" });
-      } catch (err) {
-        if (!stale) setResult({ q, items: [], error: (err as Error).message });
-      }
-    }, SEARCH_DEBOUNCE_MS);
-    return () => {
-      stale = true;
-      clearTimeout(timer);
-    };
-  }, [q, searching]);
-
-  // a relação vem do estado ao vivo: aceitar ou cancelar em outra aba já reflete aqui
-  function blockedReason(id: string) {
-    const type = state.relationships[id]?.type;
-    if (type === Rel.FRIEND) return "já é amigo";
-    if (type === Rel.OUTGOING || sent.includes(id)) return "pedido enviado";
-    if (type === Rel.INCOMING) return "pedido recebido";
-    if (type === Rel.BLOCKED) return "bloqueado";
-    return null;
-  }
-
-  async function send(u: Found) {
-    setSending(u.id);
-    setMsg(null);
-    try {
-      await api("/users/@me/relationships", { body: { username: u.username } });
-      setSent((list) => [...list, u.id]);
-      setMsg({ ok: true, text: `Pedido enviado pra ${u.global_name || u.username}.` });
-    } catch (err) {
-      setMsg({ ok: false, text: (err as Error).message });
-    } finally {
-      setSending(null);
-    }
-  }
-
-  const shown = searching && !loading ? result : null;
-
-  return (
-    <div className="max-w-2xl pb-6">
-      <h2 className="font-display text-xl font-bold">Adicionar amigo</h2>
-      <p className="mt-1 text-sm text-muted">Procure pelo nome de usuário ou de exibição e escolha a pessoa na lista.</p>
-      <label className="mt-4 flex items-center gap-2 rounded-2xl border border-line bg-paper px-3 py-2.5 shadow-soft focus-within:border-line-strong">
-        <Search size={18} className="shrink-0 text-muted" />
-        <input
-          value={text}
-          onChange={(e) => {
-            setText(e.target.value);
-            setMsg(null);
-          }}
-          placeholder="Comece a digitar um nome"
-          aria-label="Buscar pessoas"
-          autoComplete="off"
-          maxLength={32}
-          className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted md:text-[15px]"
-        />
-        {loading && <Loader2 size={16} className="shrink-0 animate-spin text-muted" aria-label="Buscando" />}
-      </label>
-
-      <div aria-live="polite">
-        {text.trim() && !searching && <p className="mt-2 text-sm text-muted">Digite pelo menos {MIN_QUERY} letras.</p>}
-        {loading && <p className="mt-2 text-sm text-muted">Buscando…</p>}
-        {shown?.error && <p className="mt-2 text-sm text-dnd">{shown.error}</p>}
-        {shown && !shown.error && !shown.items.length && <p className="mt-2 text-sm text-muted">Ninguém encontrado com esse começo de nome.</p>}
-        {msg && <p className={`mt-2 text-sm ${msg.ok ? "text-online" : "text-dnd"}`}>{msg.text}</p>}
-      </div>
-
-      {!!shown?.items.length && (
-        <ul className="mt-3 space-y-1">
-          {shown.items.map((u) => {
-            const reason = blockedReason(u.id);
-            return (
-              <li key={u.id}>
-                <button
-                  type="button"
-                  disabled={!!reason || !!sending}
-                  onClick={() => send(u)}
-                  className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-left enabled:hover:bg-paper-3/60 disabled:cursor-not-allowed"
-                >
-                  <UserAvatar user={{ ...u, bio: null }} size={36} />
-                  <span className={`min-w-0 flex-1 leading-tight ${reason ? "opacity-70" : ""}`}>
-                    <span className="block truncate font-semibold">{u.global_name || u.username}</span>
-                    <span className="block truncate text-xs text-muted">@{u.username}</span>
-                  </span>
-                  {reason ? (
-                    <span className="shrink-0 text-xs text-muted">{reason}</span>
-                  ) : (
-                    <span className="shrink-0 rounded-lg bg-signal px-2.5 py-1 text-xs font-semibold text-on-signal">
-                      {sending === u.id ? "Enviando…" : "Enviar pedido"}
+                {!shown.length && (
+                  <div className="flex flex-col items-center py-12 text-center">
+                    <span className="font-display text-3xl font-bold text-muted">
+                      {tab === "online" ? "Tudo quieto." : tab === "blocked" ? "Ninguém aqui." : tab === "pending" ? "Nada pendente." : "Bora fazer amigos?"}
                     </span>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                    <p className="mt-2 text-sm text-muted">
+                      {tab === "online" || tab === "all" ? "Manda um pedido na aba Adicionar amigo." : ""}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
 
-      <p className="mt-6 text-sm text-muted">
-        Seu usuário é <b className="font-mono text-ink">{state.me?.username}</b>. Passa pra galera te achar.
-      </p>
-    </div>
+        <RollingNow
+          onDm={onDm}
+          onJoin={onJoin}
+          className="scroll-thin mt-4 border-t border-line xl:mt-0 xl:w-[340px] xl:shrink-0 xl:overflow-y-auto xl:border-l xl:border-t-0"
+        />
+      </div>
+    </section>
   );
 }
 
@@ -313,7 +184,7 @@ function FriendRow({
         ? "Pedido enviado"
         : r.type === Rel.BLOCKED
           ? "Bloqueado"
-          : state.presences[r.id]?.custom_status || STATUS_PT[st];
+          : liveActivity(state, r.id).line || STATUS_PT[st];
 
   return (
     <div

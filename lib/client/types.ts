@@ -34,6 +34,7 @@ export type ApiChannel = {
   rate_limit_per_user?: number;
   recipients?: ApiUser[];
   owner_id?: string | null;
+  user_limit?: number | null;
   permission_overwrites?: ApiOverwrite[];
   message_count?: number;
   thread_metadata?: { archived: boolean };
@@ -128,6 +129,7 @@ export type Ready = {
   relationships: ApiRelationship[];
   read_state: ApiReadState[];
   presences: ApiPresence[];
+  self_presence?: { status: Status; custom_status: string | null };
 };
 
 export type ApiInvite = {
@@ -148,11 +150,14 @@ export const Perm = {
   ADMINISTRATOR: BigInt(1) << BigInt(3),
   MANAGE_CHANNELS: BigInt(1) << BigInt(4),
   MANAGE_GUILD: BigInt(1) << BigInt(5),
+  VIEW_CHANNEL: BigInt(1) << BigInt(10),
   MANAGE_MESSAGES: BigInt(1) << BigInt(13),
   MANAGE_WEBHOOKS: BigInt(1) << BigInt(29),
   MANAGE_GUILD_EXPRESSIONS: BigInt(1) << BigInt(30),
   ATTACH_FILES: BigInt(1) << BigInt(15),
+  CONNECT: BigInt(1) << BigInt(20),
   MUTE_MEMBERS: BigInt(1) << BigInt(22),
+  MOVE_MEMBERS: BigInt(1) << BigInt(24),
   USE_SOUNDBOARD: BigInt(1) << BigInt(42),
   MANAGE_SOUNDBOARD: BigInt(1) << BigInt(43),
 } as const;
@@ -161,4 +166,36 @@ export function hasPerm(perms: string | undefined, flag: bigint) {
   if (!perms) return false;
   const p = BigInt(perms);
   return (p & Perm.ADMINISTRATOR) === Perm.ADMINISTRATOR || (p & flag) === flag;
+}
+
+// guild.permissions não conta as exceções do canal. Mesma conta do servidor (lib/server/permissions.ts);
+// o servidor continua decidindo, aqui é só para não oferecer o que vai ser recusado.
+export function channelHasPerm(guild: ApiGuild, channel: ApiChannel, userId: string | undefined, flag: bigint) {
+  if (!guild.permissions) return false;
+  let perms = BigInt(guild.permissions);
+  if ((perms & Perm.ADMINISTRATOR) === Perm.ADMINISTRATOR) return true;
+  const roles = guild.members.find((m) => m.user?.id === userId)?.roles ?? [];
+  const list = channel.permission_overwrites ?? [];
+  const everyone = list.find((o) => o.id === guild.id);
+  if (everyone) perms = (perms & ~BigInt(everyone.deny)) | BigInt(everyone.allow);
+  let allow = BigInt(0);
+  let deny = BigInt(0);
+  for (const o of list) {
+    if (o.type === 0 && o.id !== guild.id && roles.includes(o.id)) {
+      allow |= BigInt(o.allow);
+      deny |= BigInt(o.deny);
+    }
+  }
+  perms = (perms & ~deny) | allow;
+  const mine = list.find((o) => o.type === 1 && o.id === userId);
+  if (mine) perms = (perms & ~BigInt(mine.deny)) | BigInt(mine.allow);
+  return (perms & Perm.VIEW_CHANNEL) === Perm.VIEW_CHANNEL && (perms & flag) === flag;
+}
+
+// dá para entrar nesse canal de voz agora? (permissão e lugar na sala)
+export function canJoinVoice(guild: ApiGuild, channel: ApiChannel, userId: string | undefined) {
+  if (!channelHasPerm(guild, channel, userId, Perm.CONNECT)) return false;
+  const limit = channel.user_limit ?? 0;
+  if (limit <= 0 || guild.voice_states.filter((v) => v.channel_id === channel.id).length < limit) return true;
+  return channelHasPerm(guild, channel, userId, Perm.MOVE_MEMBERS);
 }

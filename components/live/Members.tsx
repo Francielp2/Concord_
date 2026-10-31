@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { Crown } from "lucide-react";
+import { customStatusText } from "@/lib/client/activity";
 import { displayName, statusOf, useStore } from "@/lib/client/store";
 import type { ApiGuild, ApiMember } from "@/lib/client/types";
 import { STATUS_PT, UserAvatar } from "./ui";
@@ -43,7 +44,7 @@ export function Members({ guild, onDm, className }: { guild: ApiGuild; onDm: (us
                 .map((m) => {
                   const u = state.users[m.user!.id] ?? m.user!;
                   const st = statusOf(state, u.id);
-                  const custom = state.presences[u.id]?.custom_status;
+                  const custom = customStatusText(state.presences[u.id]?.custom_status);
                   const top = guild.roles
                     .filter((r) => m.roles.includes(r.id) && r.color)
                     .sort((a, b) => b.position - a.position)[0];

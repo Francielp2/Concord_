@@ -15,8 +15,6 @@ import {
   Video,
   VideoOff,
   Volume2,
-  Wifi,
-  WifiOff,
   X,
 } from "lucide-react";
 import { SCREEN_AUDIO_HINT, SCREEN_SHARE_MESSAGE, screenAudioSupport, screenShareSupport } from "@/lib/client/media";
@@ -213,7 +211,7 @@ export function VoicePanel({
               ? "Silenciado por um moderador"
               : call.micBlocked
                 ? "Sem acesso ao microfone. Libera no navegador."
-                : `Áudio ligado · ${people.length} na sala`;
+                : `Áudio ligado • ${people.length} na sala`;
 
   const btn = (on: boolean) =>
     `flex h-8 flex-1 items-center justify-center rounded-lg border ${
@@ -278,8 +276,8 @@ export function VoicePanel({
         createPortal(
           <div className="border-t border-line bg-paper-3/40 px-2 py-2">
             {alerts}
-            <div className="mb-1.5 flex items-center gap-1.5 px-1">
-              {live ? <Wifi size={13} className="shrink-0 text-online" /> : <WifiOff size={13} className="shrink-0 text-muted" />}
+            <div className="mb-1.5 flex items-start gap-1.5 px-1">
+              <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${live ? "bg-online" : "bg-faint"}`} aria-hidden />
               <span className="min-w-0 flex-1 leading-tight">
                 <span className={`block text-xs ${live ? "font-semibold text-online" : "text-muted"}`}>{statusText}</span>
                 {channel && (
@@ -291,9 +289,8 @@ export function VoicePanel({
                   </span>
                 )}
               </span>
-              <LeaveButton onLeave={onLeave} />
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex items-center gap-1.5">
               <button className={btn(call.camera)} disabled={!live} onClick={toggleCamera} aria-label={call.camera ? "Desligar câmera" : "Ligar câmera"}>
                 {call.camera ? <VideoOff size={16} /> : <Video size={16} />}
               </button>
@@ -310,6 +307,7 @@ export function VoicePanel({
               <button className={btn(open)} disabled={!live} onClick={() => setOpen((v) => !v)} aria-label={open ? "Esconder chamada" : "Ver chamada"}>
                 {open ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               </button>
+              <LeaveButton onLeave={onLeave} className="md:h-8" />
             </div>
             {screenSupport !== "ok" && <p className="mt-1.5 px-1 text-[11px] leading-snug text-muted">{SCREEN_SHARE_MESSAGE[screenSupport]}</p>}
           </div>,
@@ -322,7 +320,7 @@ export function VoicePanel({
             {alerts}
             <div className="flex items-center gap-1.5">
               <button onClick={() => live && setOpen((v) => !v)} className="flex min-w-0 flex-1 items-center gap-1.5 text-left leading-tight">
-                {live ? <Wifi size={14} className="shrink-0 text-online" /> : <WifiOff size={14} className="shrink-0 text-muted" />}
+                <span className={`h-2 w-2 shrink-0 rounded-full ${live ? "bg-online" : "bg-faint"}`} aria-hidden />
                 <span className="min-w-0">
                   <span className={`block truncate text-xs ${live ? "font-semibold text-online" : "text-muted"}`}>{statusText}</span>
                   {channel && (

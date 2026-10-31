@@ -21,6 +21,7 @@ export type State = {
   conn: "connecting" | "ready" | "reconnecting";
   me: ApiUser | null;
   myStatus: Status;
+  myCustomStatus: string | null;
   guilds: Record<string, ApiGuild>;
   guildOrder: string[];
   dms: Record<string, ApiChannel>;
@@ -43,6 +44,7 @@ type Action =
   | { type: "MEMBERS"; guildId: string; members: ApiMember[] }
   | { type: "TYPING_SWEEP" }
   | { type: "MY_STATUS"; status: Status }
+  | { type: "MY_CUSTOM_STATUS"; custom: string | null }
   | { type: "UPSERT_DM"; channel: ApiChannel }
   | { type: "UPSERT_GUILD"; guild: ApiGuild };
 
@@ -50,6 +52,7 @@ const initial: State = {
   conn: "connecting",
   me: null,
   myStatus: "online",
+  myCustomStatus: null,
   guilds: {},
   guildOrder: [],
   dms: {},
@@ -294,7 +297,11 @@ function onEvent(s: State, t: string, d: Record<string, unknown>): State {
     }
     case "PRESENCE_UPDATE": {
       const uid = (d.user as { id: string }).id;
-      if (uid === me) return { ...s, myStatus: d.status as Status };
+      if (uid === me) {
+        // quem está invisível se recebe como offline e sem status: o que vale é o que a pessoa escolheu
+        if (d.status === "offline") return s;
+        return { ...s, myStatus: d.status as Status, myCustomStatus: (d.custom_status as string) ?? null };
+      }
       return { ...s, presences: { ...s.presences, [uid]: { status: d.status as Status, custom_status: (d.custom_status as string) ?? null } } };
     }
     case "RELATIONSHIP_ADD": {
@@ -327,6 +334,8 @@ function reducer(s: State, a: Action): State {
         ...s,
         conn: "ready",
         me: d.user,
+        myStatus: d.self_presence?.status ?? s.myStatus,
+        myCustomStatus: d.self_presence ? d.self_presence.custom_status : s.myCustomStatus,
         guilds: byId(d.guilds),
         guildOrder: d.guilds.map((g) => g.id),
         dms: byId(d.private_channels),
@@ -383,6 +392,8 @@ function reducer(s: State, a: Action): State {
     }
     case "MY_STATUS":
       return { ...s, myStatus: a.status };
+    case "MY_CUSTOM_STATUS":
+      return { ...s, myCustomStatus: a.custom };
     case "UPSERT_DM":
       return { ...s, dms: { ...s.dms, [a.channel.id]: a.channel }, users: rememberUsers(s.users, a.channel.recipients ?? []) };
     case "UPSERT_GUILD":
