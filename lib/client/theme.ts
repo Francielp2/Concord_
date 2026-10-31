@@ -35,7 +35,7 @@ export const THEMES: { id: ThemeId; name: string; hint: string }[] = [
 const SURFACE: Record<ThemeId, { sheet: number[]; target: number[] }> = {
   beige: { sheet: [251, 246, 236], target: [0, 0, 0] },
   default: { sheet: [255, 253, 248], target: [0, 0, 0] },
-  black: { sheet: [21, 25, 38], target: [255, 255, 255] },
+  black: { sheet: [14, 16, 25], target: [255, 255, 255] },
 };
 
 // Qualquer cor pode ser escolhida, então o texto se adapta a ela: amarelo-claro em botão pede

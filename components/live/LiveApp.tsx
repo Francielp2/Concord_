@@ -78,7 +78,7 @@ function Shell() {
   const [activityOpen, setActivityOpen] = useState(false);
   const [help, setHelp] = useState(false);
   const [palette, setPalette] = useState(false);
-  const [friendsTab, setFriendsTab] = useState<FriendsTab>("online");
+  const [friendsTab, setFriendsTab] = useState<FriendsTab>("add");
   const [invite, setInvite] = useState<ApiGuild | null>(null);
   const [settings, setSettings] = useState<ApiGuild | null>(null);
   const [leave, setLeave] = useState<ApiGuild | null>(null);
@@ -293,8 +293,8 @@ function Shell() {
   );
 
   return (
-    <div style={accentVars(guild?.accent_color, theme)} className="app-backdrop h-dvh text-ink md:p-3 lg:p-4">
-      <div className="flex h-full flex-col overflow-hidden bg-rail md:rounded-3xl md:border md:border-line md:shadow-pop">
+    <div style={accentVars(guild?.accent_color, theme)} className="app-backdrop h-dvh text-ink md:p-3 lg:p-4 xl:p-0">
+      <div className="relative flex h-full flex-col overflow-hidden bg-rail md:rounded-3xl md:border md:border-line md:shadow-pop xl:rounded-none xl:border-0 xl:shadow-none">
         {/* no celular só na tela Amigos: dentro do chat a altura é do campo de mensagem */}
         <TopBar
           className={channel || guild ? "hidden md:flex" : "flex"}
@@ -307,14 +307,14 @@ function Shell() {
           onActivity={() => setActivityOpen(true)}
           onInstallHelp={() => setInstallHelp(true)}
         />
-        <div className="flex min-h-0 flex-1">
+        <div className="flex min-h-0 flex-1 xl:pt-[69px]">
         <div
           className={`fixed inset-y-0 left-0 z-40 flex transition-transform duration-300 md:static md:translate-x-0 ${
             drawer ? "translate-x-0" : "-translate-x-full"
           }`}
         >
           <Rail active={guild ? guild.id : "home"} onSelect={(id) => go({ place: id })} onAdd={() => setAddGuild(true)} />
-          <div className="flex md:overflow-hidden md:rounded-tl-2xl">{sidebar}</div>
+          <div className="flex md:overflow-hidden md:rounded-tl-2xl xl:rounded-none">{sidebar}</div>
         </div>
         {drawer && <button aria-label="Fechar menu" className="fixed inset-0 z-30 bg-scrim/50 md:hidden" onClick={() => setDrawer(false)} />}
 

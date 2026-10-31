@@ -33,12 +33,12 @@ export function TopBar({
   const pending = Object.values(state.relationships).filter((r) => r.type === Rel.INCOMING).length;
 
   return (
-    <div className={`h-12 shrink-0 items-center gap-1 border-b border-line bg-rail px-2 text-on-rail ${className}`} data-top-bar>
+    <div className={`h-12 shrink-0 items-center gap-1 border-b border-line bg-shell-top px-2 text-on-rail xl:absolute xl:inset-x-0 xl:left-[85px] xl:top-0 xl:z-20 xl:h-[69px] xl:px-4 ${className}`} data-top-bar>
       <button
         type="button"
         onClick={onSearch}
         aria-label="Buscar no Concord (Ctrl+K)"
-        className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg bg-rail-2 px-3 text-sm text-on-rail hover:bg-rail-3 sm:mx-auto sm:max-w-md"
+        className="flex h-9 min-w-0 flex-1 items-center gap-2 rounded-lg bg-shell-field px-3 text-sm text-on-rail hover:brightness-110 sm:mx-auto sm:max-w-md xl:h-10"
       >
         <Search size={15} className="shrink-0" aria-hidden />
         <span className="truncate">Buscar no Concord</span>

@@ -33,7 +33,7 @@ export function UserBar({
   const btn = "flex h-8 w-8 items-center justify-center rounded-lg text-ink-3 hover:bg-paper-3 hover:text-ink";
 
   return (
-    <div ref={bar} className="relative flex min-h-[58px] shrink-0 items-center gap-1 border-t border-line bg-paper-3/60 px-2 pb-[env(safe-area-inset-bottom)]">
+    <div ref={bar} className="relative flex min-h-[58px] shrink-0 items-center gap-1 border-t border-line bg-shell-userbar px-2 pb-[env(safe-area-inset-bottom)] xl:h-[79px] xl:border-0">
       <AnimatePresence>
         {menu && <UserMenu anchor={bar} className="bottom-[62px] left-2" onClose={closeMenu} onActivity={onActivity} onInstallHelp={onInstallHelp} />}
       </AnimatePresence>

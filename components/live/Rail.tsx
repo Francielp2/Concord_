@@ -53,7 +53,7 @@ export function Rail({ active, onSelect, onAdd }: { active: string; onSelect: (i
   const dmMentions = Object.values(state.dms).reduce((n, c) => n + mentionCount(state, c.id), 0);
 
   return (
-    <nav className="scroll-ink flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-rail py-3">
+    <nav className="scroll-ink flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-rail py-3 xl:-mt-[69px] xl:w-[85px] xl:border-r xl:border-shell-rail-line">
       <Item active={active === "home"} label="Mensagens diretas" onClick={() => onSelect("home")} badge={dmMentions}>
         <span
           className={`flex h-full w-full items-center justify-center rounded-[inherit] transition-colors ${

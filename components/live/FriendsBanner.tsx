@@ -1,12 +1,17 @@
-// Ilustração só com as variáveis do tema: acompanha os 3 temas e o destaque, sem imagem externa.
+"use client";
+
+import { useState } from "react";
+
+// A ilustração em SVG usa só as variáveis do tema. Se public/friends-hero.webp existir, ela vai por cima.
 export function FriendsBanner() {
+  const [noHero, setNoHero] = useState(false);
   return (
-    <div className="relative flex min-h-40 items-center overflow-hidden rounded-2xl border border-line bg-paper-2 shadow-soft" data-friends-banner>
+    <div className="relative flex min-h-40 items-center overflow-hidden rounded-2xl border border-line bg-paper-2 shadow-soft xl:h-[235px]" data-friends-banner>
       <svg
         aria-hidden
         viewBox="0 0 420 160"
         preserveAspectRatio="xMaxYMax slice"
-        className="absolute inset-y-0 right-0 h-full w-[46%] [mask-image:linear-gradient(to_right,transparent,black_38%)] sm:w-[62%]"
+        className="absolute inset-y-0 right-0 h-full w-[46%] [mask-image:linear-gradient(to_right,transparent,#000_32%)] sm:w-[62%] xl:w-[50%] 2xl:w-[62%]"
       >
         <defs>
           <linearGradient id="friends-banner-sky" x1="0" y1="0" x2="0" y2="1">
@@ -26,11 +31,20 @@ export function FriendsBanner() {
         <path d="M60 160 L170 62 L236 118 L300 70 L420 150 V160 Z" fill="color-mix(in srgb, var(--color-signal) 48%, var(--color-paper-3))" />
         <path d="M120 160 L226 96 L292 138 L366 92 L420 124 V160 Z" fill="color-mix(in srgb, var(--color-signal) 72%, var(--color-chrome))" />
       </svg>
+      {!noHero && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src="/friends-hero.webp"
+          alt=""
+          onError={() => setNoHero(true)}
+          className="absolute inset-y-0 right-0 h-full w-[46%] object-cover [mask-image:linear-gradient(to_right,transparent,#000_32%)] sm:w-[62%] xl:w-[50%] 2xl:w-[62%]"
+        />
+      )}
       <div className="relative max-w-[60%] px-4 py-5 sm:max-w-[52%] sm:px-6">
-        <h2 className="font-display text-xl font-extrabold leading-tight sm:text-2xl">
+        <h2 className="font-display text-xl font-extrabold leading-tight sm:text-2xl xl:text-[26px] 2xl:text-[32px]">
           Encontre seus amigos no <span className="text-signal-ink">Concord</span>
         </h2>
-        <p className="mt-1.5 text-xs leading-snug text-muted sm:text-sm">Adicione a galera, veja quem está on e entre na chamada com um clique.</p>
+        <p className="mt-1.5 text-xs leading-snug text-muted sm:text-sm xl:mt-3 2xl:text-base">Adicione a galera, veja quem está on e entre na chamada com um clique.</p>
       </div>
     </div>
   );

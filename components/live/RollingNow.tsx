@@ -27,7 +27,7 @@ export function ActivityTile({ activity }: { activity: Activity }) {
   );
 }
 
-export function RollingNow({ onDm, onJoin, className = "" }: { onDm: (userId: string) => void; onJoin: (channelId: string) => void; className?: string }) {
+export function RollingNow({ onDm, onJoin }: { onDm: (userId: string) => void; onJoin: (channelId: string) => void }) {
   const { state } = useStore();
   const myCall = state.me ? liveActivity(state, state.me.id).call : null;
 
@@ -41,15 +41,17 @@ export function RollingNow({ onDm, onJoin, className = "" }: { onDm: (userId: st
     .sort((a, b) => a.live.rank - b.live.rank || displayName(a.user).localeCompare(displayName(b.user)));
 
   return (
-    <aside aria-labelledby="rolling-now" className={`bg-paper px-4 py-5 ${className}`}>
-      <h3 id="rolling-now" className="flex items-center gap-2 font-display text-xl font-extrabold">
-        <Play size={20} className="shrink-0 fill-online text-online" aria-hidden />
-        Rolando agora
-      </h3>
-      <p className="mt-1 text-sm text-muted">Veja o que seus amigos estão fazendo.</p>
+    <aside aria-labelledby="rolling-now" className="flex flex-col rounded-2xl bg-card-roll p-2.5 xl:h-[342px]" data-rolling-card>
+      <div className="px-1.5 py-2 xl:h-[100px] xl:shrink-0 xl:py-3">
+        <h3 id="rolling-now" className="flex items-center gap-2 font-display text-xl font-extrabold">
+          <Play size={20} className="shrink-0 fill-online text-online" aria-hidden />
+          Rolando agora
+        </h3>
+        <p className="mt-1 text-sm text-muted">Veja o que seus amigos estão fazendo.</p>
+      </div>
 
       {cards.length ? (
-        <ul className="mt-4 space-y-2.5">
+        <ul className="scroll-thin mt-2 space-y-[9px] xl:mt-0 xl:min-h-0 xl:flex-1 xl:overflow-y-auto">
           {cards.map(({ id, user, status, live }) => {
             const name = displayName(user);
             const line = live.line ?? STATUS_PT[status];
@@ -60,7 +62,7 @@ export function RollingNow({ onDm, onJoin, className = "" }: { onDm: (userId: st
               <li
                 key={id}
                 data-activity-card
-                className="relative flex min-w-0 items-center gap-2.5 rounded-xl border border-line bg-sheet p-2.5 shadow-soft hover:border-line-strong motion-safe:transition-transform motion-safe:hover:-translate-y-0.5"
+                className="relative flex h-[68px] min-w-0 items-center gap-2.5 rounded-xl border border-line bg-card-item px-2.5 hover:border-line-strong"
               >
                 {/* o botão cobre o cartão todo; o "Entrar" fica por cima dele, sem botão dentro de botão */}
                 <button
@@ -97,7 +99,7 @@ export function RollingNow({ onDm, onJoin, className = "" }: { onDm: (userId: st
           })}
         </ul>
       ) : (
-        <p className="mt-6 rounded-xl border border-dashed border-line-strong px-4 py-6 text-center text-sm text-muted">
+        <p className="mt-2 rounded-xl border border-dashed xl:mt-0 border-line-strong px-4 py-6 text-center text-sm text-muted">
           Quando seus amigos estiverem jogando ou em chamada, aparece aqui.
         </p>
       )}

@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { callStartedAt, displayName, dmName, isUnread, mentionCount, statusOf, useStore } from "@/lib/client/store";
 import { Perm, hasPerm, type ApiChannel, type ApiGuild } from "@/lib/client/types";
+import { useWide } from "@/lib/client/useWide";
 import { personPrefs, useVoicePrefs } from "@/lib/client/voicePrefs";
 import { canOpenGuildSettings } from "./GuildSettings";
 import { CallTimer } from "./voice/CallTimer";
@@ -30,7 +31,7 @@ import { UserAvatar } from "./ui";
 
 const NEWS_KEY = "concord:news-screen-audio-dismissed";
 
-const shell = "flex w-60 shrink-0 flex-col border-r border-line bg-paper-2 lg:w-64";
+const shell = "flex w-60 shrink-0 flex-col border-r border-line bg-paper-2 lg:w-64 xl:w-[278px] xl:border-shell-right-line xl:bg-shell-side";
 
 export function GuildSidebar({
   guild,
@@ -303,6 +304,7 @@ export function HomeSidebar({
 }) {
   const { state } = useStore();
   const [q, setQ] = useState("");
+  const wide = useWide();
   const [newsSeen, setNewsSeen] = useState(() => {
     try {
       return localStorage.getItem(NEWS_KEY) === "1";
@@ -325,7 +327,8 @@ export function HomeSidebar({
 
   return (
     <aside className={shell}>
-      <div className="flex h-12 shrink-0 items-center border-b border-line px-2.5">
+      {/* no desktop a busca do topo (Ctrl+K) faz esse papel */}
+      <div className="flex h-12 shrink-0 items-center border-b border-line px-2.5 xl:hidden">
         <label className="flex w-full items-center gap-2 rounded-lg bg-paper-3 px-2 py-1.5 text-sm text-muted">
           <Search size={14} />
           <input
@@ -336,11 +339,11 @@ export function HomeSidebar({
           />
         </label>
       </div>
-      <div className="scroll-thin flex-1 overflow-y-auto px-2 pt-2">
+      <div className="scroll-thin flex-1 overflow-y-auto px-2 pt-2 xl:pl-4 xl:pr-[14px] xl:pt-5">
         <button
           onClick={onFriends}
-          className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-[15px] font-semibold ${
-            view === null ? "bg-paper-3 text-ink" : "text-muted hover:bg-paper-3/60 hover:text-ink"
+          className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-[15px] font-semibold xl:h-[46px] xl:rounded-xl xl:px-3 xl:py-0 ${
+            view === null ? "bg-paper-3 text-ink xl:bg-nav-active" : "text-muted hover:bg-paper-3/60 hover:text-ink"
           }`}
         >
           <Users size={20} />
@@ -348,13 +351,13 @@ export function HomeSidebar({
           {!!pending && <span className="ml-auto rounded-full bg-signal px-1.5 text-[11px] font-bold tabular-nums text-on-signal">{pending}</span>}
         </button>
 
-        <div className="mt-4 flex items-center justify-between px-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted">
+        <div className="mt-4 flex items-center justify-between px-2 text-[11px] font-bold uppercase tracking-[0.08em] text-muted xl:mt-0 xl:h-[63px]">
           Mensagens diretas
           <button aria-label="Nova conversa" onClick={onNewDm} className="hover:text-ink">
             <Plus size={15} />
           </button>
         </div>
-        <ul className="mt-1 space-y-px">
+        <ul className="mt-1 space-y-px xl:mt-0 xl:space-y-0">
           {dms.map((c) => {
             const other = c.recipients?.[0];
             const u = other ? (state.users[other.id] ?? other) : undefined;
@@ -365,11 +368,11 @@ export function HomeSidebar({
               <li key={c.id}>
                 <button
                   onClick={() => onDm(c.id)}
-                  className={`flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left ${active ? "bg-paper-3" : "hover:bg-paper-3/60"}`}
+                  className={`flex w-full items-center gap-3 rounded-lg px-2 py-1.5 text-left xl:h-[61px] xl:py-0 ${active ? "bg-paper-3" : "hover:bg-paper-3/60"}`}
                 >
                   <UserAvatar
                     user={u}
-                    size={32}
+                    size={wide ? 42 : 32}
                     status={c.type === 1 && u ? statusOf(state, u.id) : undefined}
                     ring={active ? "border-paper-3" : "border-paper-2"}
                   />
@@ -390,12 +393,12 @@ export function HomeSidebar({
         </ul>
       </div>
       {!newsSeen && (
-        <div className="relative mx-2 mb-2 shrink-0 rounded-xl border border-line bg-sheet p-3 pr-8 shadow-soft">
-          <p className="flex items-center gap-1.5 text-xs font-bold text-signal-ink">
+        <div className="relative mx-2 mb-2 shrink-0 rounded-xl border border-line bg-card-news p-3 pr-8 shadow-soft xl:mb-4 xl:ml-[13px] xl:mr-0 xl:h-[112px] xl:w-[252px] xl:rounded-[14px] xl:p-4 xl:pr-9">
+          <p className="flex items-center gap-1.5 text-xs font-bold text-signal-ink xl:text-sm">
             <Sparkles size={13} className="shrink-0" aria-hidden />
             Novidade no Concord
           </p>
-          <p className="mt-1 text-xs leading-snug text-ink-3">Compartilhamento de tela com melhor qualidade e áudio do sistema</p>
+          <p className="mt-1 text-xs leading-snug text-ink-3 xl:mt-1.5 xl:text-[13px]">Compartilhamento de tela com melhor qualidade e áudio do sistema</p>
           <button
             type="button"
             aria-label="Dispensar novidade"

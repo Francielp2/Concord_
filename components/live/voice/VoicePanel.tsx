@@ -214,7 +214,7 @@ export function VoicePanel({
                 : `Áudio ligado • ${people.length} na sala`;
 
   const btn = (on: boolean) =>
-    `flex h-8 flex-1 items-center justify-center rounded-lg border ${
+    `flex h-8 flex-1 items-center justify-center rounded-lg border xl:h-[42px] ${
       on ? "border-signal bg-signal text-on-signal" : "border-line text-ink-3 hover:border-line-strong hover:text-ink"
     } disabled:opacity-40`;
 
@@ -274,7 +274,7 @@ export function VoicePanel({
         )}
       {slot &&
         createPortal(
-          <div className="border-t border-line bg-paper-3/40 px-2 py-2">
+          <div className="flex flex-col justify-end border-t border-line bg-shell-voice px-2 py-2 xl:mb-[2px] xl:min-h-[114px] xl:border-0 xl:px-3 xl:pb-[15px]">
             {alerts}
             <div className="mb-1.5 flex items-start gap-1.5 px-1">
               <span className={`mt-1 h-2 w-2 shrink-0 rounded-full ${live ? "bg-online" : "bg-faint"}`} aria-hidden />
@@ -307,7 +307,7 @@ export function VoicePanel({
               <button className={btn(open)} disabled={!live} onClick={() => setOpen((v) => !v)} aria-label={open ? "Esconder chamada" : "Ver chamada"}>
                 {open ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               </button>
-              <LeaveButton onLeave={onLeave} className="md:h-8" />
+              <LeaveButton onLeave={onLeave} className="md:h-8 xl:h-[42px]" />
             </div>
             {screenSupport !== "ok" && <p className="mt-1.5 px-1 text-[11px] leading-snug text-muted">{SCREEN_SHARE_MESSAGE[screenSupport]}</p>}
           </div>,

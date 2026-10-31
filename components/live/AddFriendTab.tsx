@@ -5,6 +5,7 @@ import { Check, Copy, Link2, Loader2, Search, UserPlus, X } from "lucide-react";
 import { api } from "@/lib/client/api";
 import { copyText } from "@/lib/client/clipboard";
 import { displayName, useStore } from "@/lib/client/store";
+import { useWide } from "@/lib/client/useWide";
 import { Perm, Rel, channelHasPerm, type ApiInvite, type ApiUser } from "@/lib/client/types";
 import { UserAvatar } from "./ui";
 
@@ -12,19 +13,20 @@ type Found = Pick<ApiUser, "id" | "username" | "global_name" | "avatar">;
 
 const MIN_QUERY = 2;
 const SEARCH_DEBOUNCE_MS = 250;
-const SUGGESTION_LIMIT = 8;
+const SUGGESTION_LIMIT = 4; // uma linha de cartões; dispensar um traz o próximo
 const SUGGESTION_GUILDS = 3;
 const INVITE_MAX_AGE = 604800; // igual ao modal de convite: o servidor reaproveita o mesmo código
 const COPIED_MS = 1800;
 
 const card = "rounded-2xl border border-line bg-paper p-4 shadow-soft";
+// no desktop as seções abrem direto no miolo, sem caixa em volta
+const flat = "xl:rounded-none xl:border-0 xl:bg-transparent xl:p-0 xl:shadow-none";
 
 export function AddFriendTab() {
   return (
-    <div className="space-y-4 pb-6">
+    <div className="space-y-4 pb-6 xl:space-y-0 xl:pb-[69px]">
       <AddFriend />
       <Suggestions />
-      <InviteCard />
     </div>
   );
 }
@@ -112,11 +114,14 @@ function AddFriend() {
   const chosen = picked && !blockedReason(picked.id) ? picked : null;
 
   return (
-    <div className={card}>
-      <h2 className="font-display text-xl font-bold">Adicione amigo</h2>
-      <p className="mt-1 text-sm text-muted">Procure pelo nome de usuário ou de exibição e escolha a pessoa na lista.</p>
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-sheet px-3 py-2.5 focus-within:border-line-strong">
+    <div className={`${card} ${flat}`}>
+      <div className="xl:flex xl:h-[100px] xl:flex-col xl:justify-end xl:pb-3">
+        <h2 className="font-display text-xl font-bold xl:text-2xl">Adicione amigo</h2>
+        <p className="mt-1 text-sm text-muted">Procure pelo nome de usuário ou de exibição e escolha a pessoa na lista.</p>
+      </div>
+      <div className="relative">
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row xl:mt-0 xl:gap-3.5 xl:px-px">
+        <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-line bg-field px-3 py-2.5 focus-within:border-line-strong xl:h-[45px] xl:py-0">
           <Search size={18} className="shrink-0 text-muted" />
           <input
             value={text}
@@ -137,12 +142,14 @@ function AddFriend() {
           type="button"
           disabled={!chosen || sending}
           onClick={send}
-          className="shrink-0 rounded-xl bg-signal px-4 py-2.5 text-sm font-semibold text-on-signal enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
+          className="shrink-0 rounded-xl bg-signal px-4 py-2.5 text-sm font-semibold text-on-signal enabled:hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50 xl:h-[45px] xl:w-[169px] xl:py-0"
         >
           {sending ? "Enviando…" : "Enviar pedido"}
         </button>
       </div>
 
+      {/* no desktop a lista abre por cima das sugestões, sem empurrar o resto da tela */}
+      <div className={(text.trim() || msg) ? "xl:absolute xl:inset-x-px xl:top-[calc(100%+6px)] xl:z-30 xl:max-h-80 xl:overflow-y-auto xl:rounded-xl xl:border xl:border-line-strong xl:bg-sheet xl:p-2 xl:shadow-pop" : ""}>
       <div aria-live="polite">
         {text.trim() && !searching && <p className="mt-2 text-sm text-muted">Digite pelo menos {MIN_QUERY} letras.</p>}
         {loading && <p className="mt-2 text-sm text-muted">Buscando…</p>}
@@ -177,8 +184,10 @@ function AddFriend() {
           })}
         </ul>
       )}
+      </div>
+      </div>
 
-      <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-3 text-sm text-muted">
+      <p className="mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line pt-3 text-sm text-muted xl:mt-0 xl:h-[62px] xl:content-center xl:border-b xl:border-t-0 xl:pt-0">
         <span className="min-w-0 break-words">
           Seu usuário é <b className="font-mono text-ink">@{state.me?.username}</b>. Passe para a galera te achar.
         </span>
@@ -210,6 +219,7 @@ function readList(key: string): string[] {
 // cada um). "Amigos em comum" exigiria ver a lista de amigos dos outros.
 function Suggestions() {
   const { state, loadMembers } = useStore();
+  const wide = useWide();
   const myId = state.me?.id;
   const dismissKey = `concord:suggestions-dismissed:${myId}`;
   const [dismissed, setDismissed] = useState(() => readList(dismissKey));
@@ -262,21 +272,21 @@ function Suggestions() {
   if (!guildIds.length) return null;
 
   return (
-    <section aria-labelledby="friend-suggestions" className={card}>
-      <h2 id="friend-suggestions" className="font-display text-lg font-bold">
+    <section aria-labelledby="friend-suggestions" className={`${card} ${flat}`}>
+      <h2 id="friend-suggestions" className="font-display text-lg font-bold xl:flex xl:h-[81px] xl:items-end xl:pb-3 xl:text-xl">
         Sugestões de amizade
       </h2>
       {error && <p className="mt-2 text-sm text-dnd">{error}</p>}
       {people.length ? (
-        <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+        <ul className="mt-3 grid gap-2 sm:grid-cols-2 xl:mt-0 xl:grid-cols-4 xl:gap-3 2xl:gap-[17px]">
           {people.map(({ user, count }) => {
             const name = displayName(user);
             return (
-              <li key={user.id} data-suggestion className="flex min-w-0 items-center gap-2.5 rounded-xl border border-line bg-sheet p-2.5">
-                <UserAvatar user={user} size={38} />
-                <span className="min-w-0 flex-1 leading-tight">
+              <li key={user.id} data-suggestion className="relative flex min-w-0 items-center gap-2.5 rounded-xl border border-card-suggest-line bg-card-suggest p-2.5 xl:h-[195px] xl:flex-col xl:gap-2 xl:rounded-[14px] xl:px-3.5 xl:pb-[51px] xl:pt-5 xl:text-center">
+                <UserAvatar user={user} size={wide ? 56 : 38} />
+                <span className="min-w-0 flex-1 leading-tight xl:w-full">
                   <span className="block truncate text-sm font-semibold">{name}</span>
-                  <span className="mt-0.5 block truncate text-xs text-muted">
+                  <span className="mt-0.5 block truncate text-xs text-muted xl:whitespace-normal">
                     {count} {count === 1 ? "servidor em comum" : "servidores em comum"}
                   </span>
                 </span>
@@ -285,16 +295,16 @@ function Suggestions() {
                   aria-label={`Adicionar ${name}`}
                   disabled={!!sending}
                   onClick={() => add(user)}
-                  className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-signal px-2 text-xs font-semibold text-on-signal enabled:hover:brightness-110 disabled:opacity-50"
+                  className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-signal px-2 text-xs font-semibold text-on-signal enabled:hover:brightness-110 disabled:opacity-50 xl:absolute xl:inset-x-3.5 xl:bottom-[15px] xl:h-[35px] xl:justify-center xl:text-sm"
                 >
                   <UserPlus size={14} className="shrink-0" />
-                  <span className="hidden min-[400px]:inline">{sending === user.id ? "Enviando…" : "Adicionar"}</span>
+                  <span className="hidden min-[400px]:inline xl:inline">{sending === user.id ? "Enviando…" : "Adicionar"}</span>
                 </button>
                 <button
                   type="button"
                   aria-label={`Dispensar sugestão de ${name}`}
                   onClick={() => dismiss(user.id)}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-paper-3 hover:text-ink"
+                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-paper-3 hover:text-ink xl:absolute xl:right-1.5 xl:top-1.5"
                 >
                   <X size={16} />
                 </button>
@@ -303,7 +313,7 @@ function Suggestions() {
           })}
         </ul>
       ) : (
-        <p className="mt-2 text-sm text-muted">{missing.length ? "Procurando gente dos seus servidores…" : "Sem sugestões por enquanto."}</p>
+        <p className="mt-2 text-sm text-muted xl:mt-0 xl:flex xl:h-[195px] xl:items-center xl:justify-center xl:rounded-[14px] xl:border xl:border-card-suggest-line xl:bg-card-suggest">{missing.length ? "Procurando gente dos seus servidores…" : "Sem sugestões por enquanto."}</p>
       )}
     </section>
   );
@@ -312,7 +322,7 @@ function Suggestions() {
 // abrir a aba de novo não gasta o limite de criação de convites
 let cachedInvite: { guildId: string; guildName: string; link: string } | null = null;
 
-function InviteCard() {
+export function InviteCard() {
   const { state } = useStore();
   const myId = state.me?.id;
   const [invite, setInvite] = useState<{ link: string; note: string } | null>(() =>
@@ -365,32 +375,42 @@ function InviteCard() {
   }
 
   return (
-    <section aria-labelledby="invite-friends" className={card}>
-      <h2 id="invite-friends" className="flex items-center gap-2 font-display text-lg font-bold">
-        <Link2 size={18} className="shrink-0 text-muted" aria-hidden />
-        Convide seus amigos
-      </h2>
-      <p className="mt-1 text-sm text-muted">{invite?.note ?? "Preparando o link…"}</p>
-      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+    <section aria-labelledby="invite-friends" className="rounded-2xl bg-card-invite p-4 xl:h-[438px] xl:pb-0 xl:pl-5 xl:pr-[19px] xl:pt-0" data-invite-card>
+      <div className="xl:h-[116px] xl:pt-5">
+        <h2 id="invite-friends" className="flex items-center gap-2 font-display text-lg font-bold">
+          <Link2 size={18} className="shrink-0 text-muted" aria-hidden />
+          Convide seus amigos
+        </h2>
+        <p className="mt-1 text-sm text-muted">{invite?.note ?? "Preparando o link…"}</p>
+      </div>
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row xl:mt-0 xl:flex-col xl:gap-[13px]">
         <input
           ref={input}
           readOnly
           value={invite?.link ?? ""}
           aria-label="Link de convite"
           onFocus={(e) => e.target.select()}
-          className="min-w-0 flex-1 rounded-xl border border-line bg-sheet px-3 py-2.5 font-mono text-sm outline-none focus:border-line-strong"
+          className="min-w-0 flex-1 rounded-xl border border-line bg-card-item px-3 py-2.5 font-mono text-sm outline-none focus:border-line-strong xl:h-11 xl:flex-none xl:py-0"
         />
         <button
           type="button"
           disabled={!invite}
           onClick={copy}
-          className={`flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 ${copied ? "bg-online text-sheet" : "bg-signal text-on-signal hover:brightness-110"}`}
+          className={`flex shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-2.5 text-sm font-semibold disabled:opacity-50 xl:h-[43px] xl:py-0 ${copied ? "bg-online text-sheet" : "bg-signal text-on-signal hover:brightness-110"}`}
         >
           {copied ? <Check size={15} /> : <Copy size={15} />}
           {copied ? "Copiado" : "Copiar link"}
         </button>
       </div>
       {copyFailed && <p className="mt-2 text-sm text-dnd">O navegador não deixou copiar. O link está selecionado: use Ctrl+C.</p>}
+      <ol className="mt-5 hidden space-y-3 text-sm text-ink-3 xl:block">
+        {["Copie o link", "Mande para a galera", "Quem abrir já entra no servidor"].map((step, i) => (
+          <li key={step} className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-card-item text-xs font-bold text-signal-ink">{i + 1}</span>
+            {step}
+          </li>
+        ))}
+      </ol>
     </section>
   );
 }
